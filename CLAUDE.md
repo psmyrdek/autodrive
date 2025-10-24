@@ -1,108 +1,169 @@
-# CLAUDE.md
+# AutoDrive - Development Notes
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Overview
+A 2D driving game built with React, Vite, Tailwind CSS, Phaser 3, and TypeScript. The app consists of two main features: Game and Track Builder.
 
-## Project Overview
+## Architecture Implementation Status
 
-AutoDrive is a browser-based 2D driving game built with Phaser 3. It features arcade-style physics, customizable JSON-defined tracks, and a directional radar system that casts rays at fixed angles from each car corner to measure distances to track borders.
+### Completed
+- **Client-side routing** using react-router-dom
+  - `/game` - Game component route
+  - `/track-builder` - Track Builder component route
+  - Root `/` redirects to `/game`
 
-## Development Commands
+- **Navigation system**
+  - Top-level navigation bar with links to both features
+  - Located at `src/components/Navigation.tsx`
 
-```bash
-# Start development server (opens browser at localhost:8080)
-npm run dev
+- **Component structure**
+  - `src/components/Game.tsx` - Game feature with Phaser integration
+  - `src/components/TrackBuilder.tsx` - Full Track Builder implementation
+  - `src/components/TrackSwitcher.tsx` - Track selection UI component
+  - `src/scenes/GameScene.ts` - Phaser scene for track rendering
+  - `src/utils/curveInterpolation.ts` - Utility for dense point interpolation
 
-# Build for production
-npm run build
+- **Shared type definitions** (`src/types/track.ts`)
+  - `Point` interface for coordinates (x, y)
+  - `Track` interface for track definitions:
+    - name: string
+    - outerBorder: Point[] - Dense interpolated points for rendering and collision detection
+    - innerBorder: Point[] - Dense interpolated points for rendering and collision detection
+    - startPoint: Point
+    - sparseOuterBorder?: Point[] - Original user-placed control points (for editing)
+    - sparseInnerBorder?: Point[] - Original user-placed control points (for editing)
+  - Ensures type compatibility between Game and Track Builder
 
-# Preview production build
-npm run preview
+- **Track Builder** (`src/components/TrackBuilder.tsx`)
+  - Canvas-based drawing interface (1280x720)
+  - Three drawing tools:
+    - Outer Border (blue) - Draw track outer boundary
+    - Inner Border (red) - Draw track inner boundary
+    - Start Point (green) - Place car starting position
+  - Point-by-point drawing:
+    - Single-click to add points
+    - Double-click to complete outline
+  - Cubic bezier curve smoothing for completed borders
+  - Dense point interpolation on save (10 points per segment using `src/utils/curveInterpolation.ts`)
+  - Stores both sparse (user-placed) and dense (interpolated) points
+  - Track naming system
+  - Save/Load/Clear functionality
+  - Sidebar with tool selection and saved tracks list
+  - Visual feedback: checkmarks on completed elements
 
-# Run tests
-npm test
+- **Game Component** (`src/components/Game.tsx`)
+  - Phaser 3 integration with fixed 1280x720 resolution
+  - Scale mode: FIT (maintains aspect ratio, centers canvas)
+  - Track rendering via GameScene (`src/scenes/GameScene.ts`)
+  - Track switcher overlay (top-left) for selecting tracks
+  - Fetches tracks from backend API
+  - Auto-selects first available track on load
+  - Restarts scene when switching tracks
 
-# Run tests with UI
-npm test:ui
+- **GameScene** (`src/scenes/GameScene.ts`)
+  - Phaser scene for rendering tracks
+  - Renders dense interpolated points as connected lines
+  - Visual styling:
+    - Outer border: blue (0x4169e1), 4px width
+    - Inner border: red (0xdc143c), 4px width
+    - Start point: green circle (0x32cd32), 10px radius
+  - Simple line rendering between dense points (no bezier calculation at runtime)
+  - Optimized for performance and collision detection
+
+- **Curve Interpolation Utility** (`src/utils/curveInterpolation.ts`)
+  - `interpolateDensePoints()` function
+  - Converts sparse user-placed points into dense point arrays
+  - Uses cubic bezier curves with configurable tension
+  - Default: 10 points per segment
+  - Ensures smooth curves and adequate point density for collision detection
+  - Handles closed paths (loops)
+
+- **Backend API** (`server/index.js`)
+  - Express server on port 3001
+  - RESTful endpoints:
+    - `GET /api/tracks` - List all tracks
+    - `GET /api/tracks/:name` - Get specific track
+    - `POST /api/tracks` - Save new track
+    - `DELETE /api/tracks/:name` - Delete track
+  - File-based persistence (JSON files in `tracks/` directory)
+  - CORS enabled for development
+
+- **Development Setup**
+  - Vite proxy configured to route `/api` requests to backend
+  - Concurrent script to run both Vite and API server
+  - Use `npm run dev:all` to start both servers
+
+## Project Structure
+```
+src/
+├── components/
+│   ├── Navigation.tsx      # Top-level nav bar
+│   ├── Game.tsx            # Game feature with Phaser integration
+│   ├── TrackBuilder.tsx    # Track Builder feature (fully implemented)
+│   └── TrackSwitcher.tsx   # Track selection UI overlay
+├── scenes/
+│   └── GameScene.ts        # Phaser scene for track rendering
+├── utils/
+│   └── curveInterpolation.ts  # Dense point interpolation utility
+├── types/
+│   └── track.ts            # Shared Track type definitions
+├── App.tsx                 # Router configuration
+├── main.tsx                # App entry point
+└── index.css               # Tailwind imports
+
+server/
+└── index.js                # Express API server
+
+tracks/                     # Persisted track JSON files (created automatically)
 ```
 
-## Architecture
+## Tech Stack
+- React 19.1.1
+- TypeScript 5.9.3
+- Vite 7.1.7
+- Tailwind CSS 4.1.16
+- react-router-dom 7.9.4
+- Express 4.18.2
+- Concurrently 8.2.2
+- Phaser 3.87.0 (integrated)
 
-### Core Game Loop
+## How to Run
+1. Install dependencies: `npm install`
+2. Start both frontend and backend: `npm run dev:all`
+   - Frontend runs on http://localhost:5173
+   - Backend API runs on http://localhost:3001
+3. Alternative: Run servers separately:
+   - `npm run dev` (frontend only)
+   - `npm run dev:server` (backend only)
 
-The game uses Phaser 3's scene system with a single `GameScene` that orchestrates all game entities:
+## Track Builder Usage
+1. Navigate to `/track-builder`
+2. Enter a track name
+3. Use Outer Border tool to draw outer boundary (click points, double-click to finish)
+4. Use Inner Border tool to draw inner boundary (click points, double-click to finish)
+5. Use Start Point tool to place car starting position (single click)
+6. Click "Save Track" to persist to filesystem
+7. Saved tracks appear in sidebar and can be loaded for editing
 
-1. `GameScene` (game/scenes/GameScene.js) loads a track from JSON
-2. Track returns starting position, which is used to instantiate the `Car`
-3. Phaser's collision system is configured between car and track border physics bodies
-4. `Radar` system is initialized with references to both car and track
-5. Update loop calls `car.update()` and `radar.update()` each frame
+## Track Data Format & Interpolation
+- **Sparse Points**: User-placed control points in Track Builder (stored in `sparseOuterBorder` and `sparseInnerBorder`)
+- **Dense Points**: Automatically generated interpolated points (stored in `outerBorder` and `innerBorder`)
+- **Interpolation Process**:
+  - On save, sparse points are converted to dense points using cubic bezier curves
+  - Default: 10 interpolated points per segment between user-placed points
+  - Tension factor: 0.5 for smooth natural curves
+- **Benefits**:
+  - Consistent rendering between Track Builder preview and Game
+  - Dense point arrays ready for efficient collision detection
+  - Smooth curves without runtime bezier calculations
+  - Original sparse points preserved for editing
+- **Resolution**: Both Track Builder and Game use 1280x720 canvas for 1:1 coordinate mapping
 
-### Entity System
+## Next Steps
+1. ✅ ~~Integrate Phaser 3 into Game component~~ - COMPLETED
+2. ✅ ~~Add track selection UI in Game component~~ - COMPLETED
+3. Implement car physics and controls in Game
+4. Add collision detection with track borders using dense point arrays
 
-**Car (game/entities/Car.js)**
-- Composed of two objects: a graphics object for rendering and a sprite with physics body
-- Graphics must be manually synced to physics body position/rotation each frame (see `update()`)
-- Corner calculation uses rotation matrix transformation on local corner positions
-- Physics: Arcade Physics with velocity-based movement, drag, and max velocity limits
-- Controls: WASD (rotation affects movement direction, acceleration applied via `velocityFromRotation`)
+# SUPER IMPORTANT
 
-**Track (game/entities/Track.js)**
-- Loads JSON files defining border point arrays and starting position
-- Each border segment becomes both a rendered line and a thin rotated rectangle physics body
-- Border segments stored as `{x1, y1, x2, y2}` for radar intersection calculations
-- Uses Phaser's `staticGroup` for collision optimization
-
-### Radar System (game/utils/Radar.js)
-
-**Critical implementation details:**
-- Casts rays at **fixed angles relative to car's forward direction**, not perpendicular to car's edges
-- Ray angles: Front-right (+45°), Front-left (-45°), Back-left (+135°), Back-right (-135°)
-- Uses parametric ray-line segment intersection algorithm (not distance to line)
-- Updates on fixed interval (default 0.5s), not every frame
-- Visualization includes yellow direction indicators showing ray angles
-
-**Ray-segment intersection:**
-- Solves `origin + t*rayDir = segment_start + s*segDir`
-- Valid when `t >= 0` (forward ray) and `0 <= s <= 1` (on segment)
-- Returns closest intersection point among all border segments
-
-### Configuration
-
-All tunable parameters live in `game/config.js`:
-- Car physics (maxSpeed, acceleration, drag, rotationSpeed)
-- Radar settings (updateInterval, visualization colors)
-- Display dimensions (width, height)
-
-To change the active track, modify line 15 of `GameScene.js`.
-
-### Track Format
-
-Tracks are JSON files in `game/tracks/` with structure:
-```json
-{
-  "name": "Track Name",
-  "startPosition": {"x": 600, "y": 400, "angle": 0},
-  "borders": [
-    {"points": [[x1,y1], [x2,y2], ...]}
-  ]
-}
-```
-
-Points form closed polygons (automatically connected back to start). Multiple borders supported for inner/outer boundaries.
-
-## Key Technical Constraints
-
-1. **Car rendering**: Graphics object is separate from physics sprite. Always update graphics.x/y/rotation in car.update() to match body position.
-
-2. **Radar angles are NOT perpendicular**: They're at 45° diagonals relative to forward direction. This is intentional for the game's sensor simulation design.
-
-3. **Physics system**: Uses Arcade Physics (not Matter.js). Border collisions work via thin static rectangles, not line collisions.
-
-4. **Module system**: Project uses ES6 modules. All files must use explicit .js extensions in import statements.
-
-5. **Async track loading**: Car creation happens inside Track.load() promise callback, not in GameScene.create().
-
-## Testing
-
-Tests run with Vitest in jsdom environment. Test files should be named `*.test.js` (none currently exist).
-- Do not start dev server to test features - I'm already running one. Just ask for feedback once you're done with task
+DO NOT RUN DEV SERVERS AT ALL. AUTOMATED TESTING IS OUT OF YOUR SCOPE.
