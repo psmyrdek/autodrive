@@ -1,0 +1,452 @@
+[
+  {
+    "timestamp": 1,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 106,
+    "c_sensor_range": 652,
+    "r_sensor_range": 128
+  },
+  {
+    "timestamp": 101,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 106,
+    "c_sensor_range": 651,
+    "r_sensor_range": 128
+  },
+  {
+    "timestamp": 201,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 106,
+    "c_sensor_range": 648,
+    "r_sensor_range": 129
+  },
+  {
+    "timestamp": 300,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 106,
+    "c_sensor_range": 643,
+    "r_sensor_range": 131
+  },
+  {
+    "timestamp": 400,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 106,
+    "c_sensor_range": 638,
+    "r_sensor_range": 133
+  },
+  {
+    "timestamp": 501,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 106,
+    "c_sensor_range": 633,
+    "r_sensor_range": 135
+  },
+  {
+    "timestamp": 601,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 106,
+    "c_sensor_range": 627,
+    "r_sensor_range": 137
+  },
+  {
+    "timestamp": 709,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 106,
+    "c_sensor_range": 621,
+    "r_sensor_range": 140
+  },
+  {
+    "timestamp": 809,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 106,
+    "c_sensor_range": 615,
+    "r_sensor_range": 142
+  },
+  {
+    "timestamp": 909,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 106,
+    "c_sensor_range": 609,
+    "r_sensor_range": 145
+  },
+  {
+    "timestamp": 1009,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 106,
+    "c_sensor_range": 603,
+    "r_sensor_range": 147
+  },
+  {
+    "timestamp": 1109,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 106,
+    "c_sensor_range": 597,
+    "r_sensor_range": 150
+  },
+  {
+    "timestamp": 1209,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 106,
+    "c_sensor_range": 591,
+    "r_sensor_range": 152
+  },
+  {
+    "timestamp": 1309,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 106,
+    "c_sensor_range": 585,
+    "r_sensor_range": 155
+  },
+  {
+    "timestamp": 1409,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 106,
+    "c_sensor_range": 579,
+    "r_sensor_range": 158
+  },
+  {
+    "timestamp": 1509,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 106,
+    "c_sensor_range": 573,
+    "r_sensor_range": 160
+  },
+  {
+    "timestamp": 1609,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 107,
+    "c_sensor_range": 567,
+    "r_sensor_range": 163
+  },
+  {
+    "timestamp": 1710,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 107,
+    "c_sensor_range": 561,
+    "r_sensor_range": 165
+  },
+  {
+    "timestamp": 1818,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 107,
+    "c_sensor_range": 555,
+    "r_sensor_range": 168
+  },
+  {
+    "timestamp": 1918,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 107,
+    "c_sensor_range": 549,
+    "r_sensor_range": 171
+  },
+  {
+    "timestamp": 2018,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 107,
+    "c_sensor_range": 543,
+    "r_sensor_range": 173
+  },
+  {
+    "timestamp": 2118,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 108,
+    "c_sensor_range": 537,
+    "r_sensor_range": 176
+  },
+  {
+    "timestamp": 2226,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 108,
+    "c_sensor_range": 530,
+    "r_sensor_range": 179
+  },
+  {
+    "timestamp": 2326,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 109,
+    "c_sensor_range": 525,
+    "r_sensor_range": 181
+  },
+  {
+    "timestamp": 2427,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 111,
+    "c_sensor_range": 518,
+    "r_sensor_range": 183
+  },
+  {
+    "timestamp": 2535,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 112,
+    "c_sensor_range": 512,
+    "r_sensor_range": 186
+  },
+  {
+    "timestamp": 2635,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 114,
+    "c_sensor_range": 506,
+    "r_sensor_range": 189
+  },
+  {
+    "timestamp": 2743,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 117,
+    "c_sensor_range": 499,
+    "r_sensor_range": 191
+  },
+  {
+    "timestamp": 2843,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 119,
+    "c_sensor_range": 494,
+    "r_sensor_range": 193
+  },
+  {
+    "timestamp": 2951,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 121,
+    "c_sensor_range": 487,
+    "r_sensor_range": 196
+  },
+  {
+    "timestamp": 3051,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 124,
+    "c_sensor_range": 481,
+    "r_sensor_range": 198
+  },
+  {
+    "timestamp": 3151,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 126,
+    "c_sensor_range": 475,
+    "r_sensor_range": 200
+  },
+  {
+    "timestamp": 3251,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 129,
+    "c_sensor_range": 469,
+    "r_sensor_range": 202
+  },
+  {
+    "timestamp": 3351,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 131,
+    "c_sensor_range": 463,
+    "r_sensor_range": 203
+  },
+  {
+    "timestamp": 3451,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 134,
+    "c_sensor_range": 457,
+    "r_sensor_range": 205
+  },
+  {
+    "timestamp": 3551,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 137,
+    "c_sensor_range": 451,
+    "r_sensor_range": 206
+  },
+  {
+    "timestamp": 3651,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 139,
+    "c_sensor_range": 445,
+    "r_sensor_range": 207
+  },
+  {
+    "timestamp": 3751,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 142,
+    "c_sensor_range": 439,
+    "r_sensor_range": 208
+  },
+  {
+    "timestamp": 3851,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 145,
+    "c_sensor_range": 433,
+    "r_sensor_range": 207
+  },
+  {
+    "timestamp": 3951,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 148,
+    "c_sensor_range": 427,
+    "r_sensor_range": 206
+  },
+  {
+    "timestamp": 4051,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 151,
+    "c_sensor_range": 421,
+    "r_sensor_range": 205
+  },
+  {
+    "timestamp": 4151,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 155,
+    "c_sensor_range": 415,
+    "r_sensor_range": 204
+  },
+  {
+    "timestamp": 4259,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 158,
+    "c_sensor_range": 408,
+    "r_sensor_range": 202
+  },
+  {
+    "timestamp": 4359,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 162,
+    "c_sensor_range": 402,
+    "r_sensor_range": 201
+  },
+  {
+    "timestamp": 4459,
+    "w_pressed": true,
+    "a_pressed": false,
+    "s_pressed": false,
+    "d_pressed": false,
+    "l_sensor_range": 166,
+    "c_sensor_range": 396,
+    "r_sensor_range": 200
+  }
+]

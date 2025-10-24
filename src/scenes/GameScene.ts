@@ -42,6 +42,39 @@ export default class GameScene extends Phaser.Scene {
     this.graphics = this.add.graphics();
     this.renderTrack();
     this.createCar();
+
+    // Set up keyboard shortcut for manual telemetry save (T key)
+    const tKey = this.input.keyboard?.addKey("T");
+    tKey?.on("down", () => {
+      if (this.hasStarted && this.isRunning) {
+        // Emit event with current telemetry data
+        this.game.events.emit("saveTelemetry", {
+          elapsedTime: this.timerDisplay.getElapsedTime(),
+          telemetryData: this.telemetryTracker.getTelemetryData(),
+        });
+      }
+    });
+
+    // Set up key press listeners for WSAD to capture immediate telemetry entries
+    const wKey = this.input.keyboard?.addKey("W");
+    const aKey = this.input.keyboard?.addKey("A");
+    const sKey = this.input.keyboard?.addKey("S");
+    const dKey = this.input.keyboard?.addKey("D");
+
+    const recordKeyPressEvent = () => {
+      if (this.hasStarted && this.isRunning) {
+        this.telemetryTracker.recordKeyPress(
+          this.timerDisplay.getElapsedTime(),
+          this.inputManager,
+          this.radarSystem.distances
+        );
+      }
+    };
+
+    wKey?.on("down", recordKeyPressEvent);
+    aKey?.on("down", recordKeyPressEvent);
+    sKey?.on("down", recordKeyPressEvent);
+    dKey?.on("down", recordKeyPressEvent);
   }
 
   private renderTrack() {

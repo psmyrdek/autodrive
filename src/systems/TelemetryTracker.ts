@@ -13,7 +13,7 @@ export interface TelemetryData {
 }
 
 export class TelemetryTracker {
-  private readonly TELEMETRY_SAMPLE_INTERVAL = 500; // Sample every 500ms (0.5s)
+  private readonly TELEMETRY_SAMPLE_INTERVAL = 100;
 
   private telemetryData: TelemetryData[] = [];
   private lastTelemetrySample: number = 0;
@@ -43,6 +43,27 @@ export class TelemetryTracker {
 
       this.lastTelemetrySample = currentTime;
     }
+  }
+
+  /**
+   * Record immediate telemetry entry when a key is pressed
+   * This ensures we capture quick key presses that might be missed by periodic sampling
+   */
+  recordKeyPress(
+    elapsedTime: number,
+    inputManager: InputManager,
+    radarDistances: RadarDistances
+  ) {
+    this.telemetryData.push({
+      timestamp: elapsedTime,
+      w_pressed: inputManager.isKeyDown("W"),
+      a_pressed: inputManager.isKeyDown("A"),
+      s_pressed: inputManager.isKeyDown("S"),
+      d_pressed: inputManager.isKeyDown("D"),
+      l_sensor_range: Math.round(radarDistances.left),
+      c_sensor_range: Math.round(radarDistances.center),
+      r_sensor_range: Math.round(radarDistances.right),
+    });
   }
 
   getTelemetryData(): TelemetryData[] {
