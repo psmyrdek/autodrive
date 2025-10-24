@@ -10,6 +10,7 @@ export interface TelemetryData {
   l_sensor_range: number;
   c_sensor_range: number;
   r_sensor_range: number;
+  speed: number;
 }
 
 export class TelemetryTracker {
@@ -21,7 +22,8 @@ export class TelemetryTracker {
   sample(
     elapsedTime: number,
     inputManager: InputManager,
-    radarDistances: RadarDistances
+    radarDistances: RadarDistances,
+    speed: number
   ) {
     const currentTime = Date.now();
 
@@ -39,6 +41,7 @@ export class TelemetryTracker {
         l_sensor_range: Math.round(radarDistances.left),
         c_sensor_range: Math.round(radarDistances.center),
         r_sensor_range: Math.round(radarDistances.right),
+        speed: Math.round(speed),
       });
 
       this.lastTelemetrySample = currentTime;
@@ -52,7 +55,8 @@ export class TelemetryTracker {
   recordKeyPress(
     elapsedTime: number,
     inputManager: InputManager,
-    radarDistances: RadarDistances
+    radarDistances: RadarDistances,
+    speed: number
   ) {
     this.telemetryData.push({
       timestamp: elapsedTime,
@@ -63,6 +67,7 @@ export class TelemetryTracker {
       l_sensor_range: Math.round(radarDistances.left),
       c_sensor_range: Math.round(radarDistances.center),
       r_sensor_range: Math.round(radarDistances.right),
+      speed: Math.round(speed),
     });
   }
 

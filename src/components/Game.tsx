@@ -15,6 +15,7 @@ interface TelemetryEntry {
   l_sensor_range: number;
   c_sensor_range: number;
   r_sensor_range: number;
+  speed: number;
 }
 
 export default function Game() {
@@ -28,6 +29,7 @@ export default function Game() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
+  const [isAutopilotEnabled, setIsAutopilotEnabled] = useState(false);
 
   const showToastNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToastMessage(message);
@@ -48,6 +50,12 @@ export default function Game() {
       elapsedTime: sceneRef.current['timerDisplay']?.getElapsedTime() || 0,
       telemetryData: sceneRef.current['telemetryTracker']?.getTelemetryData() || [],
     });
+  };
+
+  const handleToggleAutopilot = () => {
+    if (sceneRef.current) {
+      sceneRef.current.toggleAutopilot();
+    }
   };
 
   useEffect(() => {
@@ -107,14 +115,25 @@ export default function Game() {
       }
     };
 
+    // Listen for autopilot toggle events
+    const handleAutopilotToggled = (enabled: boolean) => {
+      setIsAutopilotEnabled(enabled);
+      showToastNotification(
+        enabled ? 'Autopilot enabled' : 'Autopilot disabled',
+        'info'
+      );
+    };
+
     gameRef.current.events.on('collision', handleCollision);
     gameRef.current.events.on('saveTelemetry', handleSaveTelemetry);
+    gameRef.current.events.on('autopilotToggled', handleAutopilotToggled);
 
     // Cleanup
     return () => {
       if (gameRef.current) {
         gameRef.current.events.off('collision', handleCollision);
         gameRef.current.events.off('saveTelemetry', handleSaveTelemetry);
+        gameRef.current.events.off('autopilotToggled', handleAutopilotToggled);
         gameRef.current.destroy(true);
         gameRef.current = null;
       }
@@ -181,17 +200,37 @@ export default function Game() {
       <div ref={containerRef} className="w-full h-full" />
       <TrackSwitcher onTrackChange={handleTrackChange} currentTrack={currentTrack} />
 
-      {/* Save telemetry button */}
-      <div className="absolute bottom-4 right-4 flex flex-col items-end gap-2">
-        <button
-          onClick={handleManualSaveTelemetry}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors shadow-lg"
-        >
-          Save Telemetry
-        </button>
-        <span className="text-gray-400 text-xs font-mono">
-          or press <kbd className="bg-gray-700 px-1.5 py-0.5 rounded text-gray-300">T</kbd>
-        </span>
+      {/* Control buttons */}
+      <div className="absolute bottom-4 right-4 flex flex-col items-end gap-3">
+        {/* Autopilot toggle button */}
+        <div className="flex flex-col items-end gap-2">
+          <button
+            onClick={handleToggleAutopilot}
+            className={`${
+              isAutopilotEnabled
+                ? 'bg-green-600 hover:bg-green-700'
+                : 'bg-gray-600 hover:bg-gray-700'
+            } text-white font-semibold px-4 py-2 rounded-lg transition-colors shadow-lg`}
+          >
+            {isAutopilotEnabled ? 'Autopilot: ON' : 'Autopilot: OFF'}
+          </button>
+          <span className="text-gray-400 text-xs font-mono">
+            or press <kbd className="bg-gray-700 px-1.5 py-0.5 rounded text-gray-300">P</kbd>
+          </span>
+        </div>
+
+        {/* Save telemetry button */}
+        <div className="flex flex-col items-end gap-2">
+          <button
+            onClick={handleManualSaveTelemetry}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors shadow-lg"
+          >
+            Save Telemetry
+          </button>
+          <span className="text-gray-400 text-xs font-mono">
+            or press <kbd className="bg-gray-700 px-1.5 py-0.5 rounded text-gray-300">T</kbd>
+          </span>
+        </div>
       </div>
 
       <CrashModal

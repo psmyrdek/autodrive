@@ -6,6 +6,7 @@ import {InputManager} from "../systems/InputManager";
 import {RadarSystem} from "../systems/RadarSystem";
 import {TelemetryTracker} from "../systems/TelemetryTracker";
 import {TimerDisplay} from "../systems/TimerDisplay";
+import {AutopilotSystem, type CarState} from "../systems/AutopilotSystem";
 
 export default class GameScene extends Phaser.Scene {
   private track: Track | null = null;
@@ -14,6 +15,7 @@ export default class GameScene extends Phaser.Scene {
   // Game state
   private isRunning: boolean = true; // Track if game is active (not crashed)
   private hasStarted: boolean = false; // Track if user has made first action
+  private isAutopilotEnabled: boolean = false; // Track if autopilot mode is active
 
   // Modular systems
   private carPhysics!: CarPhysics;
@@ -21,6 +23,7 @@ export default class GameScene extends Phaser.Scene {
   private radarSystem!: RadarSystem;
   private telemetryTracker!: TelemetryTracker;
   private timerDisplay!: TimerDisplay;
+  private autopilotSystem!: AutopilotSystem;
 
   constructor() {
     super({key: "GameScene"});
@@ -37,6 +40,7 @@ export default class GameScene extends Phaser.Scene {
     this.radarSystem = new RadarSystem(this);
     this.telemetryTracker = new TelemetryTracker();
     this.timerDisplay = new TimerDisplay(this);
+    this.autopilotSystem = new AutopilotSystem();
 
     // Initialize graphics and track
     this.graphics = this.add.graphics();
@@ -55,6 +59,12 @@ export default class GameScene extends Phaser.Scene {
       }
     });
 
+    // Set up keyboard shortcut for autopilot toggle (P key)
+    const pKey = this.input.keyboard?.addKey("P");
+    pKey?.on("down", () => {
+      this.toggleAutopilot();
+    });
+
     // Set up key press listeners for WSAD to capture immediate telemetry entries
     const wKey = this.input.keyboard?.addKey("W");
     const aKey = this.input.keyboard?.addKey("A");
@@ -66,7 +76,8 @@ export default class GameScene extends Phaser.Scene {
         this.telemetryTracker.recordKeyPress(
           this.timerDisplay.getElapsedTime(),
           this.inputManager,
-          this.radarSystem.distances
+          this.radarSystem.distances,
+          this.carPhysics.getSpeed()
         );
       }
     };
@@ -152,14 +163,19 @@ export default class GameScene extends Phaser.Scene {
 
     // Only handle input and physics if game is running
     if (this.isRunning) {
-      // Start timer and telemetry on first user input
-      if (!this.hasStarted && this.inputManager.hasAnyInput()) {
+      // Start timer and telemetry on first user input or autopilot activation
+      if (!this.hasStarted && (this.inputManager.hasAnyInput() || this.isAutopilotEnabled)) {
         this.hasStarted = true;
         this.startTimer();
       }
 
-      // Handle user input and apply physics
-      this.inputManager.handleInput(this.carPhysics, deltaSeconds);
+      // Handle input - either from autopilot or manual control
+      if (this.isAutopilotEnabled) {
+        this.handleAutopilotInput(deltaSeconds);
+      } else {
+        this.inputManager.handleInput(this.carPhysics, deltaSeconds);
+      }
+
       this.carPhysics.applyPhysics(deltaSeconds);
       this.carPhysics.updatePosition();
 
@@ -174,7 +190,8 @@ export default class GameScene extends Phaser.Scene {
         this.telemetryTracker.sample(
           this.timerDisplay.getElapsedTime(),
           this.inputManager,
-          this.radarSystem.distances
+          this.radarSystem.distances,
+          this.carPhysics.getSpeed()
         );
       }
 
@@ -219,5 +236,61 @@ export default class GameScene extends Phaser.Scene {
     this.hasStarted = false;
     this.resetCarPosition();
     this.telemetryTracker.clear();
+  }
+
+  /**
+   * Toggle autopilot mode on/off
+   */
+  toggleAutopilot() {
+    this.isAutopilotEnabled = !this.isAutopilotEnabled;
+
+    // Emit event to React component to update UI
+    this.game.events.emit("autopilotToggled", this.isAutopilotEnabled);
+  }
+
+  /**
+   * Get current autopilot state
+   */
+  getAutopilotState(): boolean {
+    return this.isAutopilotEnabled;
+  }
+
+  /**
+   * Handle autopilot input by getting commands from AutopilotSystem
+   * and applying them to CarPhysics
+   */
+  private handleAutopilotInput(deltaSeconds: number) {
+    // Prepare current car state for autopilot
+    const carState: CarState = {
+      body: this.carPhysics.carBody,
+      sensors: this.radarSystem.distances,
+      speed: this.carPhysics.getSpeed(),
+    };
+
+    // Get control commands from autopilot
+    const commands = this.autopilotSystem.getControlCommands(carState);
+
+    // Apply commands to car physics (same as manual input would)
+    const speed = this.carPhysics.getSpeed();
+
+    if (commands.forward) {
+      this.carPhysics.accelerate(deltaSeconds);
+    }
+
+    if (commands.backward) {
+      if (speed > 10) {
+        this.carPhysics.brake();
+      } else {
+        this.carPhysics.reverse(deltaSeconds);
+      }
+    }
+
+    if (commands.left && speed > 20) {
+      this.carPhysics.turnLeft(deltaSeconds);
+    }
+
+    if (commands.right && speed > 20) {
+      this.carPhysics.turnRight(deltaSeconds);
+    }
   }
 }
