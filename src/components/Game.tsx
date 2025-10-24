@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import GameScene from '../scenes/GameScene';
 import TrackSwitcher from './TrackSwitcher';
+import CrashModal from './CrashModal';
 import type { Track } from '../types/track';
 
 export default function Game() {
@@ -9,6 +10,8 @@ export default function Game() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const sceneRef = useRef<GameScene | null>(null);
+  const [showCrashModal, setShowCrashModal] = useState(false);
+  const [crashTime, setCrashTime] = useState(0);
 
   useEffect(() => {
     if (!containerRef.current || gameRef.current) return;
@@ -37,9 +40,18 @@ export default function Game() {
       }
     });
 
+    // Listen for collision events
+    const handleCollision = (elapsedTime: number) => {
+      setCrashTime(elapsedTime);
+      setShowCrashModal(true);
+    };
+
+    gameRef.current.events.on('collision', handleCollision);
+
     // Cleanup
     return () => {
       if (gameRef.current) {
+        gameRef.current.events.off('collision', handleCollision);
         gameRef.current.destroy(true);
         gameRef.current = null;
       }
@@ -48,6 +60,7 @@ export default function Game() {
 
   const handleTrackChange = (track: Track) => {
     setCurrentTrack(track);
+    setShowCrashModal(false); // Close modal when switching tracks
 
     // Restart the game with the new track
     if (gameRef.current && sceneRef.current) {
@@ -68,10 +81,29 @@ export default function Game() {
     }
   };
 
+  const handleRestart = () => {
+    setShowCrashModal(false);
+    if (sceneRef.current) {
+      sceneRef.current.restart();
+    }
+  };
+
+  const handleSaveAndRestart = () => {
+    // TODO: Implement save functionality later
+    console.log('Save functionality not yet implemented. Time:', crashTime);
+    handleRestart();
+  };
+
   return (
     <div className="relative w-full h-screen bg-gray-900">
       <div ref={containerRef} className="w-full h-full" />
       <TrackSwitcher onTrackChange={handleTrackChange} currentTrack={currentTrack} />
+      <CrashModal
+        isOpen={showCrashModal}
+        elapsedTime={crashTime}
+        onRestart={handleRestart}
+        onSaveAndRestart={handleSaveAndRestart}
+      />
     </div>
   );
 }

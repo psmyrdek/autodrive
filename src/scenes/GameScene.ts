@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type { Track } from '../types/track';
+import { checkCarCollision } from '../utils/collisionDetection';
 
 export default class GameScene extends Phaser.Scene {
   private track: Track | null = null;
@@ -22,6 +23,17 @@ export default class GameScene extends Phaser.Scene {
   private timerText: Phaser.GameObjects.Text | null = null;
   private startTime: number = 0;
   private elapsedTime: number = 0;
+  private isRunning: boolean = true; // Track if game is active (not crashed)
+
+  // Radar properties
+  private radarGraphics: Phaser.GameObjects.Graphics | null = null;
+  private radarTexts: {
+    left: Phaser.GameObjects.Text | null;
+    center: Phaser.GameObjects.Text | null;
+    right: Phaser.GameObjects.Text | null;
+  } = { left: null, center: null, right: null };
+  private radarDistances = { left: 0, center: 0, right: 0 };
+  private readonly RADAR_MAX_DISTANCE = 1500; // Maximum radar range
 
   // Physics constants
   private readonly ACCELERATION = 300;
@@ -52,6 +64,7 @@ export default class GameScene extends Phaser.Scene {
     this.createCar();
     this.setupInput();
     this.createTimerDisplay();
+    this.createRadarDisplay();
   }
 
   private renderTrack() {
@@ -99,7 +112,8 @@ export default class GameScene extends Phaser.Scene {
       this.resetCarPosition();
     }
 
-    // Start timer
+    // Start timer and reset game state
+    this.isRunning = true;
     this.startTimer();
   }
 
@@ -185,6 +199,25 @@ export default class GameScene extends Phaser.Scene {
     this.timerText.setOrigin(1, 0); // Right-aligned
   }
 
+  private createRadarDisplay() {
+    // Create radar graphics for drawing beams
+    this.radarGraphics = this.add.graphics();
+
+    // Create radar distance text displays at the bottom-left corner
+    const textStyle = {
+      fontSize: '20px',
+      color: '#00ff00',
+      fontFamily: 'Arial',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 3,
+    };
+
+    this.radarTexts.left = this.add.text(20, 590, 'L: 0', textStyle);
+    this.radarTexts.center = this.add.text(20, 620, 'C: 0', textStyle);
+    this.radarTexts.right = this.add.text(20, 650, 'R: 0', textStyle);
+  }
+
   private startTimer() {
     this.startTime = Date.now();
     this.elapsedTime = 0;
@@ -199,23 +232,218 @@ export default class GameScene extends Phaser.Scene {
     return `Time: ${minutes}:${seconds.toString().padStart(2, '0')}.${deciseconds}`;
   }
 
-  update(time: number, delta: number) {
-    if (!this.car) return;
+  /**
+   * Check if two line segments intersect and return the intersection point
+   */
+  private lineIntersection(
+    x1: number, y1: number, x2: number, y2: number,  // Line 1
+    x3: number, y3: number, x4: number, y4: number   // Line 2
+  ): { x: number; y: number } | null {
+    const denominator = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+
+    if (Math.abs(denominator) < 0.0001) {
+      return null; // Lines are parallel
+    }
+
+    const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denominator;
+    const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denominator;
+
+    // Check if intersection is within both line segments
+    if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+      return {
+        x: x1 + t * (x2 - x1),
+        y: y1 + t * (y2 - y1)
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Cast a ray from a point in a direction and find the nearest intersection with track borders
+   */
+  private castRay(
+    originX: number,
+    originY: number,
+    dirX: number,
+    dirY: number
+  ): { x: number; y: number; distance: number } | null {
+    if (!this.track) return null;
+
+    // Calculate ray end point (far away)
+    const rayEndX = originX + dirX * this.RADAR_MAX_DISTANCE;
+    const rayEndY = originY + dirY * this.RADAR_MAX_DISTANCE;
+
+    let closestIntersection: { x: number; y: number } | null = null;
+    let closestDistance = Infinity;
+
+    // Check against outer border segments
+    for (let i = 0; i < this.track.outerBorder.length; i++) {
+      const p1 = this.track.outerBorder[i];
+      const p2 = this.track.outerBorder[(i + 1) % this.track.outerBorder.length];
+
+      const intersection = this.lineIntersection(
+        originX, originY, rayEndX, rayEndY,
+        p1.x, p1.y, p2.x, p2.y
+      );
+
+      if (intersection) {
+        const distance = Math.sqrt(
+          (intersection.x - originX) ** 2 + (intersection.y - originY) ** 2
+        );
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestIntersection = intersection;
+        }
+      }
+    }
+
+    // Check against inner border segments
+    for (let i = 0; i < this.track.innerBorder.length; i++) {
+      const p1 = this.track.innerBorder[i];
+      const p2 = this.track.innerBorder[(i + 1) % this.track.innerBorder.length];
+
+      const intersection = this.lineIntersection(
+        originX, originY, rayEndX, rayEndY,
+        p1.x, p1.y, p2.x, p2.y
+      );
+
+      if (intersection) {
+        const distance = Math.sqrt(
+          (intersection.x - originX) ** 2 + (intersection.y - originY) ** 2
+        );
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestIntersection = intersection;
+        }
+      }
+    }
+
+    if (closestIntersection) {
+      return {
+        x: closestIntersection.x,
+        y: closestIntersection.y,
+        distance: closestDistance
+      };
+    }
+
+    return null;
+  }
+
+  private updateRadar() {
+    if (!this.radarGraphics || !this.track) return;
+
+    // Clear previous radar beams
+    this.radarGraphics.clear();
+
+    const hw = this.carBody.width / 2;
+    const hh = this.carBody.height / 2;
+    const rotation = this.carBody.rotation;
+    const cos = Math.cos(rotation);
+    const sin = Math.sin(rotation);
+
+    // Calculate the three sensor positions (front of car)
+    // Left front corner
+    const leftSensorX = this.carBody.x + (hw * cos - hh * sin);
+    const leftSensorY = this.carBody.y + (hw * sin + hh * cos);
+
+    // Center front
+    const centerSensorX = this.carBody.x + hw * cos;
+    const centerSensorY = this.carBody.y + hw * sin;
+
+    // Right front corner
+    const rightSensorX = this.carBody.x + (hw * cos + hh * sin);
+    const rightSensorY = this.carBody.y + (hw * sin - hh * cos);
+
+    // Ray directions with 20-degree angles for corners
+    const angleOffset = (20 * Math.PI) / 180; // Convert 20 degrees to radians
+
+    // Left beam: +20 degrees from forward (clockwise in screen coordinates)
+    const leftAngle = rotation + angleOffset;
+    const leftDirX = Math.cos(leftAngle);
+    const leftDirY = Math.sin(leftAngle);
+
+    // Center beam: straight forward
+    const centerDirX = cos;
+    const centerDirY = sin;
+
+    // Right beam: -20 degrees from forward (counterclockwise in screen coordinates)
+    const rightAngle = rotation - angleOffset;
+    const rightDirX = Math.cos(rightAngle);
+    const rightDirY = Math.sin(rightAngle);
+
+    // Cast rays from each sensor
+    const leftHit = this.castRay(leftSensorX, leftSensorY, leftDirX, leftDirY);
+    const centerHit = this.castRay(centerSensorX, centerSensorY, centerDirX, centerDirY);
+    const rightHit = this.castRay(rightSensorX, rightSensorY, rightDirX, rightDirY);
+
+    // Update distances
+    this.radarDistances.left = leftHit ? leftHit.distance : this.RADAR_MAX_DISTANCE;
+    this.radarDistances.center = centerHit ? centerHit.distance : this.RADAR_MAX_DISTANCE;
+    this.radarDistances.right = rightHit ? rightHit.distance : this.RADAR_MAX_DISTANCE;
+
+    // Draw radar beams
+    this.radarGraphics.lineStyle(2, 0x00ff00, 0.6);
+
+    if (leftHit) {
+      this.radarGraphics.lineBetween(leftSensorX, leftSensorY, leftHit.x, leftHit.y);
+    }
+    if (centerHit) {
+      this.radarGraphics.lineBetween(centerSensorX, centerSensorY, centerHit.x, centerHit.y);
+    }
+    if (rightHit) {
+      this.radarGraphics.lineBetween(rightSensorX, rightSensorY, rightHit.x, rightHit.y);
+    }
+
+    // Update distance text displays
+    if (this.radarTexts.left) {
+      this.radarTexts.left.setText(`L: ${Math.round(this.radarDistances.left)}`);
+    }
+    if (this.radarTexts.center) {
+      this.radarTexts.center.setText(`C: ${Math.round(this.radarDistances.center)}`);
+    }
+    if (this.radarTexts.right) {
+      this.radarTexts.right.setText(`R: ${Math.round(this.radarDistances.right)}`);
+    }
+  }
+
+  update(_time: number, delta: number) {
+    if (!this.car || !this.track) return;
 
     const deltaSeconds = delta / 1000;
 
-    // Update timer
-    if (this.startTime > 0) {
+    // Only update timer if game is running
+    if (this.isRunning && this.startTime > 0) {
       this.elapsedTime = Date.now() - this.startTime;
       if (this.timerText) {
         this.timerText.setText(this.formatTime(this.elapsedTime));
       }
     }
 
-    // Handle input and physics
-    this.handleInput(deltaSeconds);
-    this.applyPhysics(deltaSeconds);
-    this.updateCarPosition();
+    // Only handle input and physics if game is running
+    if (this.isRunning) {
+      this.handleInput(deltaSeconds);
+      this.applyPhysics(deltaSeconds);
+      this.updateCarPosition();
+
+      // Update radar system
+      this.updateRadar();
+
+      // Check for collision with all 4 corners of the car
+      const collision = checkCarCollision(
+        this.carBody.x,
+        this.carBody.y,
+        this.carBody.width,
+        this.carBody.height,
+        this.carBody.rotation,
+        this.track.outerBorder,
+        this.track.innerBorder
+      );
+
+      if (collision) {
+        this.handleCollision();
+      }
+    }
   }
 
   private handleInput(deltaSeconds: number) {
@@ -282,5 +510,28 @@ export default class GameScene extends Phaser.Scene {
 
     this.car.setPosition(this.carBody.x, this.carBody.y);
     this.car.setRotation(this.carBody.rotation);
+  }
+
+  private handleCollision() {
+    // Stop the game
+    this.isRunning = false;
+
+    // Stop car movement
+    this.carBody.velocityX = 0;
+    this.carBody.velocityY = 0;
+
+    // Emit collision event for React component to handle
+    this.game.events.emit('collision', this.elapsedTime);
+  }
+
+  /**
+   * Public method to restart the game from React component
+   */
+  restart() {
+    if (!this.track) return;
+
+    this.isRunning = true;
+    this.resetCarPosition();
+    this.startTimer();
   }
 }
