@@ -1,96 +1,105 @@
 # AutoDrive
 
-A 2D driving game with a visual track builder, built with React, TypeScript, and Vite.
+A 2D driving game with a visual track builder and telemetry collection system. Built with React, TypeScript, Phaser 3, and Express.
 
 ## Features
 
-### Track Builder
-- Canvas-based track drawing interface
-- Three drawing tools:
-  - **Outer Border** (blue) - Define the outer boundary of the track
-  - **Inner Border** (red) - Define the inner boundary of the track
-  - **Start Point** (green) - Place the car starting position
-- Point-by-point drawing with single-click
-- Double-click to complete and apply cubic bezier curve smoothing
-- Save tracks to the filesystem as JSON
-- Load and edit previously saved tracks
+- **Playable Game**: Drive a car around custom tracks with arcade-style physics
+- **Track Builder**: Visual canvas-based editor for creating custom racing tracks
+- **Distance Sensors**: Three radar rays detect obstacles and track boundaries
+- **Telemetry Collection**: Record gameplay data (inputs, sensor readings) for analysis
+- **Timer**: Track your lap times and performance
 
-### Game (Coming Soon)
-- Play on custom-built tracks
-- Car physics and controls
-- Collision detection with track borders
+## Quick Start
 
-## Getting Started
+### Prerequisites
+- Node.js (see `.node-version` for required version)
+- npm
 
 ### Installation
-
 ```bash
 npm install
 ```
 
 ### Running the Application
-
-Start both frontend and backend servers:
 ```bash
 npm run dev:all
 ```
 
-This will start:
-- Frontend (Vite): http://localhost:5173
-- Backend API (Express): http://localhost:3001
+This starts both:
+- Frontend on http://localhost:5173
+- Backend API on http://localhost:3001
 
-Alternatively, run servers separately:
+### Individual Services
 ```bash
-# Frontend only
-npm run dev
-
-# Backend only
-npm run dev:server
+npm run dev          # Frontend only
+npm run dev:server   # Backend only
 ```
 
-## How to Use Track Builder
+## Usage
 
-1. Navigate to `/track-builder` in the app
-2. Enter a name for your track
-3. **Draw Outer Border**: Click points around the canvas, double-click to complete
-4. **Draw Inner Border**: Click points for the inner boundary, double-click to complete
-5. **Place Start Point**: Single-click to place the car starting position
-6. Click **Save Track** to persist to the filesystem
-7. View saved tracks in the sidebar and click to load them for editing
+### Playing the Game
+1. Navigate to the Game page
+2. Use **WASD** keys to control the car:
+   - W: Accelerate
+   - S: Brake/Reverse
+   - A: Turn left (when moving)
+   - D: Turn right (when moving)
+3. Stay between the track boundaries
+4. Switch tracks using the overlay menu
+5. Save telemetry data after crashes for analysis
+
+### Building Tracks
+1. Navigate to the Track Builder page
+2. Click to place points for the outer boundary
+3. Complete the outer boundary, then draw the inner boundary
+4. Click to set the starting position
+5. Save your track with a unique name
 
 ## Tech Stack
 
-- **Frontend**: React 19.1.1, TypeScript 5.9.3, Tailwind CSS 4.1.16
-- **Build Tool**: Vite 7.1.7
-- **Backend**: Express 4.18.2
-- **Routing**: react-router-dom 7.9.4
+- **Frontend**: React 19, TypeScript 5.9, Phaser 3.90, Vite 7.1
+- **Styling**: Tailwind CSS 4.1
+- **Routing**: react-router-dom 7.9
+- **Backend**: Express 4.18
+- **Game Engine**: Phaser 3 (canvas-based 2D rendering)
 
 ## Project Structure
 
 ```
-src/
-├── components/
-│   ├── Navigation.tsx    # Top navigation bar
-│   ├── Game.tsx          # Game component (placeholder)
-│   └── TrackBuilder.tsx  # Track Builder with canvas drawing
-├── types/
-│   └── track.ts          # Shared type definitions
-├── App.tsx               # Router configuration
-└── main.tsx              # App entry point
-
-server/
-└── index.js              # Express API server
-
-tracks/                   # Persisted track JSON files
+autodrive/
+├── src/                    # Frontend source
+│   ├── components/         # React components
+│   ├── scenes/            # Phaser game scenes
+│   ├── systems/           # Game systems (physics, radar, telemetry)
+│   ├── utils/             # Utilities (collision, interpolation)
+│   └── types/             # TypeScript type definitions
+├── server/                # Backend Express API
+│   ├── tracks/            # Saved track JSON files
+│   └── telemetry/         # Saved telemetry data
+└── public/                # Static assets
 ```
-
-## API Endpoints
-
-- `GET /api/tracks` - List all saved tracks
-- `GET /api/tracks/:name` - Get a specific track by name
-- `POST /api/tracks` - Save a new track
-- `DELETE /api/tracks/:name` - Delete a track
 
 ## Development
 
-For detailed development notes, see [CLAUDE.md](./CLAUDE.md).
+### Build for Production
+```bash
+npm run build
+npm run preview
+```
+
+### Linting
+```bash
+npm run lint
+```
+
+## Data Files
+
+- **Tracks**: Stored as JSON in `server/tracks/`
+- **Telemetry**: Stored as JSON in `server/telemetry/`
+
+Each track includes boundary points, starting position, and interpolated curves for smooth rendering.
+
+## License
+
+[Add license information]
