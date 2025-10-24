@@ -16,6 +16,9 @@ export class Car {
     this.body.setDrag(GameConfig.car.drag);
     this.body.setMaxVelocity(GameConfig.car.maxSpeed);
 
+    // Front wheel steering
+    this.wheelAngle = 0; // Current steering angle in degrees
+
     // Input keys
     this.keys = {
       w: scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
@@ -56,30 +59,71 @@ export class Car {
   update(delta) {
     const deltaSeconds = delta / 1000;
 
-    // Handle rotation
+    // Handle wheel steering (A/D keys)
+    let steeringInput = 0;
     if (this.keys.a.isDown) {
-      this.body.angle -= GameConfig.car.rotationSpeed * deltaSeconds;
-    }
-    if (this.keys.d.isDown) {
-      this.body.angle += GameConfig.car.rotationSpeed * deltaSeconds;
+      steeringInput = -1; // Turn left
+    } else if (this.keys.d.isDown) {
+      steeringInput = 1; // Turn right
     }
 
-    // Handle acceleration
+    // Update wheel angle based on input
+    if (steeringInput !== 0) {
+      this.wheelAngle += steeringInput * GameConfig.car.wheelTurnSpeed * deltaSeconds;
+      this.wheelAngle = Phaser.Math.Clamp(
+        this.wheelAngle,
+        -GameConfig.car.maxWheelAngle,
+        GameConfig.car.maxWheelAngle
+      );
+    } else {
+      // Return wheels to center when no steering input
+      if (Math.abs(this.wheelAngle) > 0.1) {
+        const returnAmount = GameConfig.car.wheelReturnSpeed * deltaSeconds;
+        if (this.wheelAngle > 0) {
+          this.wheelAngle = Math.max(0, this.wheelAngle - returnAmount);
+        } else {
+          this.wheelAngle = Math.min(0, this.wheelAngle + returnAmount);
+        }
+      } else {
+        this.wheelAngle = 0;
+      }
+    }
+
+    // Handle acceleration (W/S keys)
     const acceleration = GameConfig.car.acceleration;
     if (this.keys.w.isDown) {
+      // Apply acceleration in the direction of car body + wheel angle
+      const driveAngle = this.body.angle + this.wheelAngle;
       this.scene.physics.velocityFromRotation(
-        Phaser.Math.DegToRad(this.body.angle),
+        Phaser.Math.DegToRad(driveAngle),
         acceleration,
         this.body.body.acceleration
       );
     } else if (this.keys.s.isDown) {
+      // Reverse: apply in opposite direction with reduced speed
+      const driveAngle = this.body.angle + this.wheelAngle;
       this.scene.physics.velocityFromRotation(
-        Phaser.Math.DegToRad(this.body.angle),
+        Phaser.Math.DegToRad(driveAngle),
         -acceleration * GameConfig.car.reverseSpeedMultiplier,
         this.body.body.acceleration
       );
     } else {
       this.body.setAcceleration(0, 0);
+    }
+
+    // Rotate car body based on velocity and wheel angle (bicycle model)
+    const speed = Math.sqrt(
+      this.body.body.velocity.x ** 2 + this.body.body.velocity.y ** 2
+    );
+
+    if (speed > 10) { // Only rotate when moving
+      // Calculate angular velocity based on wheel angle and speed
+      // Using simplified bicycle model: angularVelocity ≈ (speed / wheelbase) * sin(wheelAngle)
+      const wheelbase = GameConfig.car.width; // Use car width as approximate wheelbase
+      const angularVelocity =
+        (speed / wheelbase) * Math.sin(Phaser.Math.DegToRad(this.wheelAngle));
+
+      this.body.angle += Phaser.Math.RadToDeg(angularVelocity) * deltaSeconds;
     }
 
     // Update graphics position and rotation to match physics body

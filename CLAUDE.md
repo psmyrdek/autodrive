@@ -105,3 +105,4 @@ Points form closed polygons (automatically connected back to start). Multiple bo
 ## Testing
 
 Tests run with Vitest in jsdom environment. Test files should be named `*.test.js` (none currently exist).
+- Do not start dev server to test features - I'm already running one. Just ask for feedback once you're done with task

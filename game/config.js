@@ -12,7 +12,9 @@ export const GameConfig = {
     maxSpeed: 200,
     acceleration: 150,
     drag: 100,
-    rotationSpeed: 180, // degrees per second
+    maxWheelAngle: 30, // maximum steering angle in degrees
+    wheelTurnSpeed: 120, // degrees per second
+    wheelReturnSpeed: 180, // how fast wheels return to center when not steering
     reverseSpeedMultiplier: 0.6,
   },
 
@@ -28,6 +30,8 @@ export const GameConfig = {
   // Track parameters
   track: {
     borderColor: 0xffffff,
+    outerBorderColor: 0xff0000, // Red for outer walls
+    innerBorderColor: 0xffffff, // White for inner walls
     borderWidth: 3,
   },
 };

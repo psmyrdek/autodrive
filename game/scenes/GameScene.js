@@ -5,6 +5,12 @@ import {Radar} from "../utils/Radar.js";
 export class GameScene extends Phaser.Scene {
   constructor() {
     super({key: "GameScene"});
+    this.trackPath = null;
+  }
+
+  init(data) {
+    // Accept track path from scene data
+    this.trackPath = data.trackPath || "game/tracks/track1.json";
   }
 
   create() {
@@ -12,7 +18,7 @@ export class GameScene extends Phaser.Scene {
     this.track = new Track(this);
 
     // Load track and create car at starting position
-    this.track.load("game/tracks/track1.json").then((startPos) => {
+    this.track.load(this.trackPath).then((startPos) => {
       // Create car at track starting position
       this.car = new Car(this, startPos.x, startPos.y, startPos.angle);
 

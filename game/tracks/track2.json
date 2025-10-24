@@ -1,12 +1,13 @@
 {
-  "name": "Oval Track",
+  "name": "Rounded Oval Circuit",
   "startPosition": {
-    "x": 400,
+    "x": 350,
     "y": 400,
     "angle": 0
   },
   "borders": [
     {
+      "type": "outer",
       "points": [
         [200, 200],
         [1000, 200],
@@ -19,6 +20,7 @@
       ]
     },
     {
+      "type": "inner",
       "points": [
         [350, 350],
         [850, 350],

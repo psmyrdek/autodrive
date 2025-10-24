@@ -35,6 +35,39 @@
       #info p {
         margin: 5px 0;
       }
+      #track-picker {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 15px;
+        border-radius: 5px;
+        color: white;
+        min-width: 250px;
+      }
+      #track-picker h3 {
+        margin: 0 0 10px 0;
+        font-size: 16px;
+      }
+      #track-picker select {
+        width: 100%;
+        padding: 8px;
+        font-size: 14px;
+        background: #333;
+        color: white;
+        border: 1px solid #555;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+      #track-picker select:hover {
+        background: #444;
+      }
+      #track-picker p {
+        margin: 10px 0 0 0;
+        font-size: 12px;
+        color: #aaa;
+        font-style: italic;
+      }
     </style>
   </head>
   <body>
@@ -45,6 +78,13 @@
       <p><strong>A</strong> - Turn Left</p>
       <p><strong>D</strong> - Turn Right</p>
       <p><em>Radar updates every 0.5s</em></p>
+    </div>
+    <div id="track-picker">
+      <h3>Select Track</h3>
+      <select id="track-select">
+        <option value="">Loading tracks...</option>
+      </select>
+      <p id="track-description"></p>
     </div>
     <div id="game-container"></div>
 

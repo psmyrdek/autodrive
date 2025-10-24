@@ -31,19 +31,28 @@ export class Track {
 
   render() {
     this.graphics.clear();
-    this.graphics.lineStyle(
-      GameConfig.track.borderWidth,
-      GameConfig.track.borderColor,
-      1
-    );
-
     this.borderSegments = [];
 
     // Draw each border
     this.borders.forEach((border) => {
       const points = border.points;
+      const borderType = border.type || "outer"; // Default to outer if not specified
 
       if (points.length < 2) return;
+
+      // Set color based on border type
+      let borderColor = GameConfig.track.borderColor;
+      if (borderType === "inner") {
+        borderColor = GameConfig.track.innerBorderColor || GameConfig.track.borderColor;
+      } else if (borderType === "outer") {
+        borderColor = GameConfig.track.outerBorderColor || GameConfig.track.borderColor;
+      }
+
+      this.graphics.lineStyle(
+        GameConfig.track.borderWidth,
+        borderColor,
+        1
+      );
 
       // Draw lines connecting all points
       for (let i = 0; i < points.length; i++) {
@@ -58,6 +67,7 @@ export class Track {
           y1: start[1],
           x2: end[0],
           y2: end[1],
+          type: borderType,
         });
       }
     });
