@@ -40,7 +40,7 @@ export default class GameScene extends Phaser.Scene {
     this.radarSystem = new RadarSystem(this);
     this.telemetryTracker = new TelemetryTracker();
     this.timerDisplay = new TimerDisplay(this);
-    this.autopilotSystem = new AutopilotSystem();
+    this.autopilotSystem = new AutopilotSystem(true); // Enable ML mode by default
 
     // Initialize graphics and track
     this.graphics = this.add.graphics();
@@ -267,30 +267,33 @@ export default class GameScene extends Phaser.Scene {
       speed: this.carPhysics.getSpeed(),
     };
 
-    // Get control commands from autopilot
-    const commands = this.autopilotSystem.getControlCommands(carState);
+    // Get control commands from autopilot (async, non-blocking)
+    // We use .then() to avoid blocking the game loop
+    this.autopilotSystem.getControlCommands(carState).then((commands) => {
+      // Apply commands to car physics (same as manual input would)
+      const speed = this.carPhysics.getSpeed();
 
-    // Apply commands to car physics (same as manual input would)
-    const speed = this.carPhysics.getSpeed();
-
-    if (commands.forward) {
-      this.carPhysics.accelerate(deltaSeconds);
-    }
-
-    if (commands.backward) {
-      if (speed > 10) {
-        this.carPhysics.brake();
-      } else {
-        this.carPhysics.reverse(deltaSeconds);
+      if (commands.forward) {
+        this.carPhysics.accelerate(deltaSeconds);
       }
-    }
 
-    if (commands.left && speed > 20) {
-      this.carPhysics.turnLeft(deltaSeconds);
-    }
+      if (commands.backward) {
+        if (speed > 10) {
+          this.carPhysics.brake();
+        } else {
+          this.carPhysics.reverse(deltaSeconds);
+        }
+      }
 
-    if (commands.right && speed > 20) {
-      this.carPhysics.turnRight(deltaSeconds);
-    }
+      if (commands.left && speed > 20) {
+        this.carPhysics.turnLeft(deltaSeconds);
+      }
+
+      if (commands.right && speed > 20) {
+        this.carPhysics.turnRight(deltaSeconds);
+      }
+    }).catch((error) => {
+      console.error("Autopilot error:", error);
+    });
   }
 }
