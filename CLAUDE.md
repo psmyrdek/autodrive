@@ -60,13 +60,23 @@ A 2D driving game built with React, Vite, Tailwind CSS, Phaser 3, and TypeScript
   - Restarts scene when switching tracks
 
 - **GameScene** (`src/scenes/GameScene.ts`)
-  - Phaser scene for rendering tracks
+  - Phaser scene for rendering tracks and game logic
   - Renders dense interpolated points as connected lines
   - Visual styling:
     - Outer border: blue (0x4169e1), 4px width
     - Inner border: red (0xdc143c), 4px width
-    - Start point: green circle (0x32cd32), 10px radius
   - Simple line rendering between dense points (no bezier calculation at runtime)
+  - **Car implementation**:
+    - Rectangle asset (40x20px) with blue front, red back, gray body
+    - Spawns at track's startPoint
+    - WSAD keyboard controls (W: accelerate, S: brake/reverse, A/D: turn when moving)
+    - Arcade-style physics with momentum and friction
+    - Physics constants: acceleration (300), max speed (400), friction (0.96), turn speed (3.5)
+  - **Timer system**:
+    - Continuous timer displayed in top-right corner
+    - Format: M:SS.D (minutes:seconds.deciseconds)
+    - Starts automatically when track loads
+    - Resets when switching tracks
   - Optimized for performance and collision detection
 
 - **Curve Interpolation Utility** (`src/utils/curveInterpolation.ts`)
@@ -135,6 +145,18 @@ tracks/                     # Persisted track JSON files (created automatically)
    - `npm run dev` (frontend only)
    - `npm run dev:server` (backend only)
 
+## Game Controls
+1. Navigate to `/game`
+2. Select a track from the top-left panel
+3. Car spawns at the track's start point
+4. **Controls**:
+   - **W** - Accelerate forward
+   - **S** - Brake (when moving) / Reverse (when stopped)
+   - **A** - Turn left (requires movement)
+   - **D** - Turn right (requires movement)
+5. Timer starts automatically and runs continuously
+6. Switch tracks anytime using the track selector
+
 ## Track Builder Usage
 1. Navigate to `/track-builder`
 2. Enter a track name
@@ -161,8 +183,10 @@ tracks/                     # Persisted track JSON files (created automatically)
 ## Next Steps
 1. ✅ ~~Integrate Phaser 3 into Game component~~ - COMPLETED
 2. ✅ ~~Add track selection UI in Game component~~ - COMPLETED
-3. Implement car physics and controls in Game
-4. Add collision detection with track borders using dense point arrays
+3. ✅ ~~Implement car physics and controls in Game~~ - COMPLETED
+4. ✅ ~~Add continuous timer to track driving time~~ - COMPLETED
+5. Add collision detection with track borders using dense point arrays
+6. Add lap timing and checkpoints system
 
 # SUPER IMPORTANT
 
