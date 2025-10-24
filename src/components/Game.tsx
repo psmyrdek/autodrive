@@ -5,6 +5,17 @@ import TrackSwitcher from './TrackSwitcher';
 import CrashModal from './CrashModal';
 import type { Track } from '../types/track';
 
+interface TelemetryEntry {
+  timestamp: number;
+  w_pressed: boolean;
+  a_pressed: boolean;
+  s_pressed: boolean;
+  d_pressed: boolean;
+  l_sensor_range: number;
+  c_sensor_range: number;
+  r_sensor_range: number;
+}
+
 export default function Game() {
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -12,6 +23,7 @@ export default function Game() {
   const sceneRef = useRef<GameScene | null>(null);
   const [showCrashModal, setShowCrashModal] = useState(false);
   const [crashTime, setCrashTime] = useState(0);
+  const [telemetryData, setTelemetryData] = useState<TelemetryEntry[]>([]);
 
   useEffect(() => {
     if (!containerRef.current || gameRef.current) return;
@@ -41,8 +53,9 @@ export default function Game() {
     });
 
     // Listen for collision events
-    const handleCollision = (elapsedTime: number) => {
-      setCrashTime(elapsedTime);
+    const handleCollision = (data: { elapsedTime: number; telemetryData: TelemetryEntry[] }) => {
+      setCrashTime(data.elapsedTime);
+      setTelemetryData(data.telemetryData);
       setShowCrashModal(true);
     };
 
@@ -88,10 +101,29 @@ export default function Game() {
     }
   };
 
-  const handleSaveAndRestart = () => {
-    // TODO: Implement save functionality later
-    console.log('Save functionality not yet implemented. Time:', crashTime);
-    handleRestart();
+  const handleSaveAndRestart = async () => {
+    try {
+      // Send telemetry data to backend
+      const response = await fetch('/api/telemetry', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(telemetryData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save telemetry');
+      }
+
+      const result = await response.json();
+      console.log('Telemetry saved successfully:', result.fileName);
+    } catch (error) {
+      console.error('Error saving telemetry:', error);
+    } finally {
+      // Always restart regardless of save success/failure
+      handleRestart();
+    }
   };
 
   return (

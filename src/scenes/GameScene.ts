@@ -1,6 +1,6 @@
-import Phaser from 'phaser';
-import type { Track } from '../types/track';
-import { checkCarCollision } from '../utils/collisionDetection';
+import Phaser from "phaser";
+import type {Track} from "../types/track";
+import {checkCarCollision} from "../utils/collisionDetection";
 
 export default class GameScene extends Phaser.Scene {
   private track: Track | null = null;
@@ -16,7 +16,7 @@ export default class GameScene extends Phaser.Scene {
     velocityY: 0,
     rotation: 0,
     width: 40,
-    height: 20
+    height: 20,
   };
 
   // Timer properties
@@ -31,9 +31,23 @@ export default class GameScene extends Phaser.Scene {
     left: Phaser.GameObjects.Text | null;
     center: Phaser.GameObjects.Text | null;
     right: Phaser.GameObjects.Text | null;
-  } = { left: null, center: null, right: null };
-  private radarDistances = { left: 0, center: 0, right: 0 };
+  } = {left: null, center: null, right: null};
+  private radarDistances = {left: 0, center: 0, right: 0};
   private readonly RADAR_MAX_DISTANCE = 1500; // Maximum radar range
+
+  // Telemetry properties
+  private telemetryData: Array<{
+    timestamp: number;
+    w_pressed: boolean;
+    a_pressed: boolean;
+    s_pressed: boolean;
+    d_pressed: boolean;
+    l_sensor_range: number;
+    c_sensor_range: number;
+    r_sensor_range: number;
+  }> = [];
+  private lastTelemetrySample: number = 0;
+  private readonly TELEMETRY_SAMPLE_INTERVAL = 500; // Sample every 500ms (0.5s)
 
   // Physics constants
   private readonly ACCELERATION = 300;
@@ -51,7 +65,7 @@ export default class GameScene extends Phaser.Scene {
   } = {};
 
   constructor() {
-    super({ key: 'GameScene' });
+    super({key: "GameScene"});
   }
 
   setTrack(track: Track) {
@@ -85,7 +99,7 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  private drawPath(points: { x: number; y: number }[]) {
+  private drawPath(points: {x: number; y: number}[]) {
     if (!this.graphics || points.length < 2) return;
 
     this.graphics.beginPath();
@@ -142,7 +156,12 @@ export default class GameScene extends Phaser.Scene {
 
     // Main car body (gray fill)
     this.carGraphics.fillStyle(0x808080, 1);
-    this.carGraphics.fillRect(-hw, -hh, this.carBody.width, this.carBody.height);
+    this.carGraphics.fillRect(
+      -hw,
+      -hh,
+      this.carBody.width,
+      this.carBody.height
+    );
 
     // Blue border at front (right side when rotation = 0)
     this.carGraphics.lineStyle(3, 0x0000ff, 1);
@@ -160,7 +179,12 @@ export default class GameScene extends Phaser.Scene {
 
     // Black border on top and bottom
     this.carGraphics.lineStyle(2, 0x000000, 1);
-    this.carGraphics.strokeRect(-hw, -hh, this.carBody.width, this.carBody.height);
+    this.carGraphics.strokeRect(
+      -hw,
+      -hh,
+      this.carBody.width,
+      this.carBody.height
+    );
   }
 
   private resetCarPosition() {
@@ -188,12 +212,12 @@ export default class GameScene extends Phaser.Scene {
 
   private createTimerDisplay() {
     // Create timer text in top-right corner
-    this.timerText = this.add.text(1200, 20, 'Time: 0:00.0', {
-      fontSize: '28px',
-      color: '#ffffff',
-      fontFamily: 'Arial',
-      fontStyle: 'bold',
-      stroke: '#000000',
+    this.timerText = this.add.text(1200, 20, "Time: 0:00.0", {
+      fontSize: "28px",
+      color: "#ffffff",
+      fontFamily: "Arial",
+      fontStyle: "bold",
+      stroke: "#000000",
       strokeThickness: 4,
     });
     this.timerText.setOrigin(1, 0); // Right-aligned
@@ -205,17 +229,17 @@ export default class GameScene extends Phaser.Scene {
 
     // Create radar distance text displays at the bottom-left corner
     const textStyle = {
-      fontSize: '20px',
-      color: '#00ff00',
-      fontFamily: 'Arial',
-      fontStyle: 'bold',
-      stroke: '#000000',
+      fontSize: "20px",
+      color: "#00ff00",
+      fontFamily: "Arial",
+      fontStyle: "bold",
+      stroke: "#000000",
       strokeThickness: 3,
     };
 
-    this.radarTexts.left = this.add.text(20, 590, 'L: 0', textStyle);
-    this.radarTexts.center = this.add.text(20, 620, 'C: 0', textStyle);
-    this.radarTexts.right = this.add.text(20, 650, 'R: 0', textStyle);
+    this.radarTexts.left = this.add.text(20, 500, "L: 0", textStyle);
+    this.radarTexts.center = this.add.text(20, 530, "C: 0", textStyle);
+    this.radarTexts.right = this.add.text(20, 560, "R: 0", textStyle);
   }
 
   private startTimer() {
@@ -229,16 +253,24 @@ export default class GameScene extends Phaser.Scene {
     const seconds = totalSeconds % 60;
     const deciseconds = Math.floor((milliseconds % 1000) / 100);
 
-    return `Time: ${minutes}:${seconds.toString().padStart(2, '0')}.${deciseconds}`;
+    return `Time: ${minutes}:${seconds
+      .toString()
+      .padStart(2, "0")}.${deciseconds}`;
   }
 
   /**
    * Check if two line segments intersect and return the intersection point
    */
   private lineIntersection(
-    x1: number, y1: number, x2: number, y2: number,  // Line 1
-    x3: number, y3: number, x4: number, y4: number   // Line 2
-  ): { x: number; y: number } | null {
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number, // Line 1
+    x3: number,
+    y3: number,
+    x4: number,
+    y4: number // Line 2
+  ): {x: number; y: number} | null {
     const denominator = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
 
     if (Math.abs(denominator) < 0.0001) {
@@ -252,7 +284,7 @@ export default class GameScene extends Phaser.Scene {
     if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
       return {
         x: x1 + t * (x2 - x1),
-        y: y1 + t * (y2 - y1)
+        y: y1 + t * (y2 - y1),
       };
     }
 
@@ -267,24 +299,31 @@ export default class GameScene extends Phaser.Scene {
     originY: number,
     dirX: number,
     dirY: number
-  ): { x: number; y: number; distance: number } | null {
+  ): {x: number; y: number; distance: number} | null {
     if (!this.track) return null;
 
     // Calculate ray end point (far away)
     const rayEndX = originX + dirX * this.RADAR_MAX_DISTANCE;
     const rayEndY = originY + dirY * this.RADAR_MAX_DISTANCE;
 
-    let closestIntersection: { x: number; y: number } | null = null;
+    let closestIntersection: {x: number; y: number} | null = null;
     let closestDistance = Infinity;
 
     // Check against outer border segments
     for (let i = 0; i < this.track.outerBorder.length; i++) {
       const p1 = this.track.outerBorder[i];
-      const p2 = this.track.outerBorder[(i + 1) % this.track.outerBorder.length];
+      const p2 =
+        this.track.outerBorder[(i + 1) % this.track.outerBorder.length];
 
       const intersection = this.lineIntersection(
-        originX, originY, rayEndX, rayEndY,
-        p1.x, p1.y, p2.x, p2.y
+        originX,
+        originY,
+        rayEndX,
+        rayEndY,
+        p1.x,
+        p1.y,
+        p2.x,
+        p2.y
       );
 
       if (intersection) {
@@ -301,11 +340,18 @@ export default class GameScene extends Phaser.Scene {
     // Check against inner border segments
     for (let i = 0; i < this.track.innerBorder.length; i++) {
       const p1 = this.track.innerBorder[i];
-      const p2 = this.track.innerBorder[(i + 1) % this.track.innerBorder.length];
+      const p2 =
+        this.track.innerBorder[(i + 1) % this.track.innerBorder.length];
 
       const intersection = this.lineIntersection(
-        originX, originY, rayEndX, rayEndY,
-        p1.x, p1.y, p2.x, p2.y
+        originX,
+        originY,
+        rayEndX,
+        rayEndY,
+        p1.x,
+        p1.y,
+        p2.x,
+        p2.y
       );
 
       if (intersection) {
@@ -323,11 +369,31 @@ export default class GameScene extends Phaser.Scene {
       return {
         x: closestIntersection.x,
         y: closestIntersection.y,
-        distance: closestDistance
+        distance: closestDistance,
       };
     }
 
     return null;
+  }
+
+  private sampleTelemetry() {
+    const currentTime = Date.now();
+
+    // Check if enough time has passed since last sample
+    if (currentTime - this.lastTelemetrySample >= this.TELEMETRY_SAMPLE_INTERVAL) {
+      this.telemetryData.push({
+        timestamp: this.elapsedTime,
+        w_pressed: this.keys.W?.isDown ?? false,
+        a_pressed: this.keys.A?.isDown ?? false,
+        s_pressed: this.keys.S?.isDown ?? false,
+        d_pressed: this.keys.D?.isDown ?? false,
+        l_sensor_range: Math.round(this.radarDistances.left),
+        c_sensor_range: Math.round(this.radarDistances.center),
+        r_sensor_range: Math.round(this.radarDistances.right),
+      });
+
+      this.lastTelemetrySample = currentTime;
+    }
   }
 
   private updateRadar() {
@@ -374,36 +440,73 @@ export default class GameScene extends Phaser.Scene {
 
     // Cast rays from each sensor
     const leftHit = this.castRay(leftSensorX, leftSensorY, leftDirX, leftDirY);
-    const centerHit = this.castRay(centerSensorX, centerSensorY, centerDirX, centerDirY);
-    const rightHit = this.castRay(rightSensorX, rightSensorY, rightDirX, rightDirY);
+    const centerHit = this.castRay(
+      centerSensorX,
+      centerSensorY,
+      centerDirX,
+      centerDirY
+    );
+    const rightHit = this.castRay(
+      rightSensorX,
+      rightSensorY,
+      rightDirX,
+      rightDirY
+    );
 
     // Update distances
-    this.radarDistances.left = leftHit ? leftHit.distance : this.RADAR_MAX_DISTANCE;
-    this.radarDistances.center = centerHit ? centerHit.distance : this.RADAR_MAX_DISTANCE;
-    this.radarDistances.right = rightHit ? rightHit.distance : this.RADAR_MAX_DISTANCE;
+    this.radarDistances.left = leftHit
+      ? leftHit.distance
+      : this.RADAR_MAX_DISTANCE;
+    this.radarDistances.center = centerHit
+      ? centerHit.distance
+      : this.RADAR_MAX_DISTANCE;
+    this.radarDistances.right = rightHit
+      ? rightHit.distance
+      : this.RADAR_MAX_DISTANCE;
 
     // Draw radar beams
     this.radarGraphics.lineStyle(2, 0x00ff00, 0.6);
 
     if (leftHit) {
-      this.radarGraphics.lineBetween(leftSensorX, leftSensorY, leftHit.x, leftHit.y);
+      this.radarGraphics.lineBetween(
+        leftSensorX,
+        leftSensorY,
+        leftHit.x,
+        leftHit.y
+      );
     }
     if (centerHit) {
-      this.radarGraphics.lineBetween(centerSensorX, centerSensorY, centerHit.x, centerHit.y);
+      this.radarGraphics.lineBetween(
+        centerSensorX,
+        centerSensorY,
+        centerHit.x,
+        centerHit.y
+      );
     }
     if (rightHit) {
-      this.radarGraphics.lineBetween(rightSensorX, rightSensorY, rightHit.x, rightHit.y);
+      this.radarGraphics.lineBetween(
+        rightSensorX,
+        rightSensorY,
+        rightHit.x,
+        rightHit.y
+      );
     }
 
     // Update distance text displays
     if (this.radarTexts.left) {
-      this.radarTexts.left.setText(`L: ${Math.round(this.radarDistances.left)}`);
+      this.radarTexts.left.setText(
+        `L: ${Math.round(this.radarDistances.left)}`
+      );
     }
     if (this.radarTexts.center) {
-      this.radarTexts.center.setText(`C: ${Math.round(this.radarDistances.center)}`);
+      this.radarTexts.center.setText(
+        `C: ${Math.round(this.radarDistances.center)}`
+      );
     }
     if (this.radarTexts.right) {
-      this.radarTexts.right.setText(`R: ${Math.round(this.radarDistances.right)}`);
+      this.radarTexts.right.setText(
+        `R: ${Math.round(this.radarDistances.right)}`
+      );
     }
   }
 
@@ -428,6 +531,9 @@ export default class GameScene extends Phaser.Scene {
 
       // Update radar system
       this.updateRadar();
+
+      // Sample telemetry data
+      this.sampleTelemetry();
 
       // Check for collision with all 4 corners of the car
       const collision = checkCarCollision(
@@ -520,8 +626,11 @@ export default class GameScene extends Phaser.Scene {
     this.carBody.velocityX = 0;
     this.carBody.velocityY = 0;
 
-    // Emit collision event for React component to handle
-    this.game.events.emit('collision', this.elapsedTime);
+    // Emit collision event with telemetry data for React component to handle
+    this.game.events.emit("collision", {
+      elapsedTime: this.elapsedTime,
+      telemetryData: this.telemetryData,
+    });
   }
 
   /**
@@ -533,5 +642,14 @@ export default class GameScene extends Phaser.Scene {
     this.isRunning = true;
     this.resetCarPosition();
     this.startTimer();
+    this.clearTelemetry();
+  }
+
+  /**
+   * Clear telemetry data (called on restart)
+   */
+  private clearTelemetry() {
+    this.telemetryData = [];
+    this.lastTelemetrySample = 0;
   }
 }
