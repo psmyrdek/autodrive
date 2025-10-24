@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AutoDrive - 2D Driving Game</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #1a1a1a;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        font-family: "Arial", sans-serif;
+      }
+      #game-container {
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+      }
+      #info {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        color: white;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 10px;
+        border-radius: 5px;
+        font-size: 14px;
+        max-width: 300px;
+      }
+      #info h3 {
+        margin: 0 0 10px 0;
+      }
+      #info p {
+        margin: 5px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="info">
+      <h3>AutoDrive Controls</h3>
+      <p><strong>W</strong> - Accelerate</p>
+      <p><strong>S</strong> - Brake/Reverse</p>
+      <p><strong>A</strong> - Turn Left</p>
+      <p><strong>D</strong> - Turn Right</p>
+      <p><em>Radar updates every 0.5s</em></p>
+    </div>
+    <div id="game-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+    <script type="module" src="game/main.js"></script>
+  </body>
+</html>
