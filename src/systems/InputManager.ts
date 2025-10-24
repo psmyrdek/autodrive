@@ -67,4 +67,14 @@ export class InputManager {
   isKeyDown(key: "W" | "A" | "S" | "D"): boolean {
     return this.keys[key]?.isDown ?? false;
   }
+
+  hasAnyInput(): boolean {
+    return (
+      this.keys.W?.isDown ||
+      this.keys.A?.isDown ||
+      this.keys.S?.isDown ||
+      this.keys.D?.isDown ||
+      false
+    );
+  }
 }

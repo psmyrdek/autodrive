@@ -13,6 +13,7 @@ export default class GameScene extends Phaser.Scene {
 
   // Game state
   private isRunning: boolean = true; // Track if game is active (not crashed)
+  private hasStarted: boolean = false; // Track if user has made first action
 
   // Modular systems
   private carPhysics!: CarPhysics;
@@ -81,12 +82,16 @@ export default class GameScene extends Phaser.Scene {
     this.track = track;
     this.renderTrack();
 
-    // Reset car position to new track's start point
-    this.resetCarPosition();
+    // Create car if it doesn't exist, otherwise reset position
+    if (!this.carPhysics.isCreated()) {
+      this.createCar();
+    } else {
+      this.resetCarPosition();
+    }
 
-    // Start timer and reset game state
+    // Reset game state (timer will start on first input)
     this.isRunning = true;
-    this.startTimer();
+    this.hasStarted = false;
   }
 
   private createCar() {
@@ -112,11 +117,14 @@ export default class GameScene extends Phaser.Scene {
 
     const deltaSeconds = delta / 1000;
 
-    // Update timer
-    this.timerDisplay.update(this.isRunning);
-
     // Only handle input and physics if game is running
     if (this.isRunning) {
+      // Start timer and telemetry on first user input
+      if (!this.hasStarted && this.inputManager.hasAnyInput()) {
+        this.hasStarted = true;
+        this.startTimer();
+      }
+
       // Handle user input and apply physics
       this.inputManager.handleInput(this.carPhysics, deltaSeconds);
       this.carPhysics.applyPhysics(deltaSeconds);
@@ -125,12 +133,17 @@ export default class GameScene extends Phaser.Scene {
       // Update radar system
       this.radarSystem.update(this.carPhysics.carBody, this.track);
 
-      // Sample telemetry data
-      this.telemetryTracker.sample(
-        this.timerDisplay.getElapsedTime(),
-        this.inputManager,
-        this.radarSystem.distances
-      );
+      // Only update timer and sample telemetry after game has started
+      if (this.hasStarted) {
+        this.timerDisplay.update(this.isRunning);
+
+        // Sample telemetry data
+        this.telemetryTracker.sample(
+          this.timerDisplay.getElapsedTime(),
+          this.inputManager,
+          this.radarSystem.distances
+        );
+      }
 
       // Check for collision with all 4 corners of the car
       const collision = checkCarCollision(
@@ -170,8 +183,8 @@ export default class GameScene extends Phaser.Scene {
     if (!this.track) return;
 
     this.isRunning = true;
+    this.hasStarted = false;
     this.resetCarPosition();
-    this.startTimer();
     this.telemetryTracker.clear();
   }
 }

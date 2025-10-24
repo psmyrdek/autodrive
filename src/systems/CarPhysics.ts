@@ -152,4 +152,8 @@ export class CarPhysics {
       this.carBody.velocityX ** 2 + this.carBody.velocityY ** 2
     );
   }
+
+  isCreated(): boolean {
+    return this.container !== null;
+  }
 }
