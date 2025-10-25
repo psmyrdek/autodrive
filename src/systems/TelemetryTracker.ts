@@ -55,6 +55,7 @@ export class TelemetryTracker {
   /**
    * Record immediate telemetry entry when a key is pressed
    * This ensures we capture quick key presses that might be missed by periodic sampling
+   * Adds multiple simulated entries for braking (10 entries) and turning (3 entries)
    */
   recordKeyPress(
     elapsedTime: number,
@@ -62,19 +63,34 @@ export class TelemetryTracker {
     radarDistances: RadarDistances,
     speed: number
   ) {
-    this.telemetryData.push({
-      timestamp: elapsedTime,
-      w_pressed: inputManager.isKeyDown("W"),
-      a_pressed: inputManager.isKeyDown("A"),
-      s_pressed: inputManager.isKeyDown("S"),
-      d_pressed: inputManager.isKeyDown("D"),
-      l_sensor_range: Math.round(radarDistances.left),
-      ml_sensor_range: Math.round(radarDistances.midLeft),
-      c_sensor_range: Math.round(radarDistances.center),
-      mr_sensor_range: Math.round(radarDistances.midRight),
-      r_sensor_range: Math.round(radarDistances.right),
-      speed: Math.round(speed),
-    });
+    const isBreaking = inputManager.isKeyDown("S");
+    const isTurningLeft = inputManager.isKeyDown("A");
+    const isTurningRight = inputManager.isKeyDown("D");
+
+    // Determine number of entries to add
+    let entriesToAdd = 1;
+    if (isBreaking) {
+      entriesToAdd = 10;
+    } else if (isTurningLeft || isTurningRight) {
+      entriesToAdd = 3;
+    }
+
+    // Add multiple entries with slightly offset timestamps
+    for (let i = 0; i < entriesToAdd; i++) {
+      this.telemetryData.push({
+        timestamp: elapsedTime + i,
+        w_pressed: inputManager.isKeyDown("W"),
+        a_pressed: inputManager.isKeyDown("A"),
+        s_pressed: inputManager.isKeyDown("S"),
+        d_pressed: inputManager.isKeyDown("D"),
+        l_sensor_range: Math.round(radarDistances.left),
+        ml_sensor_range: Math.round(radarDistances.midLeft),
+        c_sensor_range: Math.round(radarDistances.center),
+        mr_sensor_range: Math.round(radarDistances.midRight),
+        r_sensor_range: Math.round(radarDistances.right),
+        speed: Math.round(speed),
+      });
+    }
   }
 
   getTelemetryData(): TelemetryData[] {

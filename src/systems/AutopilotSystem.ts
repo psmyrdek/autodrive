@@ -96,7 +96,7 @@ export class AutopilotSystem {
   /**
    * Simple rule-based logic for autopilot.
    * Strategy:
-   * - Steering: Turn away from closer walls (sensor-based centering)
+   * - Steering: Turn away from closer walls (sensor-based centering using all 5 sensors)
    * - Speed: Accelerate to target speed, slow down when obstacles ahead
    * - Safety: Brake hard if very close to obstacle
    */
@@ -110,7 +110,14 @@ export class AutopilotSystem {
     };
 
     // === Speed Control ===
-    const minDistance = Math.min(sensors.left, sensors.center, sensors.right);
+    // Use all 5 sensors to detect minimum distance
+    const minDistance = Math.min(
+      sensors.left,
+      sensors.midLeft,
+      sensors.center,
+      sensors.midRight,
+      sensors.right
+    );
 
     // Brake hard if danger ahead
     if (minDistance < this.OBSTACLE_DANGER_DISTANCE) {
@@ -131,7 +138,10 @@ export class AutopilotSystem {
     // === Steering Control ===
     // Only steer if moving fast enough
     if (speed > this.MIN_SPEED_FOR_TURNING) {
-      const leftRightDiff = sensors.left - sensors.right;
+      // Calculate weighted average of left and right sensors (mid sensors have more weight)
+      const leftSide = (sensors.left + sensors.midLeft * 2) / 3;
+      const rightSide = (sensors.right + sensors.midRight * 2) / 3;
+      const leftRightDiff = leftSide - rightSide;
 
       // If left side is more open than right, turn left
       if (leftRightDiff > this.STEERING_THRESHOLD) {
@@ -142,11 +152,17 @@ export class AutopilotSystem {
         commands.right = true;
       }
 
-      // Emergency steering: if one side is very close, turn away aggressively
-      if (sensors.left < this.OBSTACLE_DANGER_DISTANCE) {
+      // Emergency steering: if any sensor on one side is very close, turn away aggressively
+      if (
+        sensors.left < this.OBSTACLE_DANGER_DISTANCE ||
+        sensors.midLeft < this.OBSTACLE_DANGER_DISTANCE
+      ) {
         commands.left = false;
         commands.right = true;
-      } else if (sensors.right < this.OBSTACLE_DANGER_DISTANCE) {
+      } else if (
+        sensors.right < this.OBSTACLE_DANGER_DISTANCE ||
+        sensors.midRight < this.OBSTACLE_DANGER_DISTANCE
+      ) {
         commands.right = false;
         commands.left = true;
       }
@@ -162,10 +178,12 @@ export class AutopilotSystem {
   private async mlLogic(state: CarState): Promise<ControlCommands> {
     const { sensors, speed } = state;
 
-    // Prepare request payload
+    // Prepare request payload with all 5 sensor values
     const payload = {
       l_sensor: sensors.left,
+      ml_sensor: sensors.midLeft,
       c_sensor: sensors.center,
+      mr_sensor: sensors.midRight,
       r_sensor: sensors.right,
       speed: speed,
     };
