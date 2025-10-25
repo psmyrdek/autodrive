@@ -8,7 +8,9 @@ export interface TelemetryData {
   s_pressed: boolean;
   d_pressed: boolean;
   l_sensor_range: number;
+  ml_sensor_range: number;
   c_sensor_range: number;
+  mr_sensor_range: number;
   r_sensor_range: number;
   speed: number;
 }
@@ -39,7 +41,9 @@ export class TelemetryTracker {
         s_pressed: inputManager.isKeyDown("S"),
         d_pressed: inputManager.isKeyDown("D"),
         l_sensor_range: Math.round(radarDistances.left),
+        ml_sensor_range: Math.round(radarDistances.midLeft),
         c_sensor_range: Math.round(radarDistances.center),
+        mr_sensor_range: Math.round(radarDistances.midRight),
         r_sensor_range: Math.round(radarDistances.right),
         speed: Math.round(speed),
       });
@@ -65,7 +69,9 @@ export class TelemetryTracker {
       s_pressed: inputManager.isKeyDown("S"),
       d_pressed: inputManager.isKeyDown("D"),
       l_sensor_range: Math.round(radarDistances.left),
+      ml_sensor_range: Math.round(radarDistances.midLeft),
       c_sensor_range: Math.round(radarDistances.center),
+      mr_sensor_range: Math.round(radarDistances.midRight),
       r_sensor_range: Math.round(radarDistances.right),
       speed: Math.round(speed),
     });

@@ -10,10 +10,12 @@ from autopilot.inference import AutopilotInference
 # Request/Response models
 class CarState(BaseModel):
     """Car state input for autopilot predictions."""
-    l_sensor: float  # Left sensor distance
-    c_sensor: float  # Center sensor distance
-    r_sensor: float  # Right sensor distance
-    speed: float     # Current speed
+    l_sensor: float   # Left sensor distance
+    ml_sensor: float  # Mid-left sensor distance
+    c_sensor: float   # Center sensor distance
+    mr_sensor: float  # Mid-right sensor distance
+    r_sensor: float   # Right sensor distance
+    speed: float      # Current speed
 
 
 class ControlCommands(BaseModel):
@@ -88,7 +90,9 @@ async def predict(state: CarState):
         # Run inference
         result = autopilot.predict(
             l_sensor=state.l_sensor,
+            ml_sensor=state.ml_sensor,
             c_sensor=state.c_sensor,
+            mr_sensor=state.mr_sensor,
             r_sensor=state.r_sensor,
             speed=state.speed,
             threshold=0.5

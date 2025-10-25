@@ -16,7 +16,7 @@ def load_telemetry_data(telemetry_dir: str = "../server/telemetry") -> Tuple[np.
 
     Returns:
         Tuple of (features, labels) as numpy arrays
-        - features: shape (N, 4) - [l_sensor_range, c_sensor_range, r_sensor_range, speed]
+        - features: shape (N, 6) - [l_sensor_range, ml_sensor_range, c_sensor_range, mr_sensor_range, r_sensor_range, speed]
         - labels: shape (N, 4) - [w_pressed, a_pressed, s_pressed, d_pressed] as binary (0/1)
     """
     telemetry_path = Path(telemetry_dir)
@@ -41,10 +41,12 @@ def load_telemetry_data(telemetry_dir: str = "../server/telemetry") -> Tuple[np.
 
         # Each file contains an array of telemetry samples
         for sample in telemetry_data:
-            # Extract features: [l_sensor, c_sensor, r_sensor, speed]
+            # Extract features: [l_sensor, ml_sensor, c_sensor, mr_sensor, r_sensor, speed]
             features = [
                 sample['l_sensor_range'],
+                sample['ml_sensor_range'],
                 sample['c_sensor_range'],
+                sample['mr_sensor_range'],
                 sample['r_sensor_range'],
                 sample['speed']
             ]
@@ -71,10 +73,12 @@ def load_telemetry_data(telemetry_dir: str = "../server/telemetry") -> Tuple[np.
 
     # Print some statistics
     print("\nFeature statistics:")
-    print(f"  L sensor range: min={features_array[:, 0].min():.1f}, max={features_array[:, 0].max():.1f}, mean={features_array[:, 0].mean():.1f}")
-    print(f"  C sensor range: min={features_array[:, 1].min():.1f}, max={features_array[:, 1].max():.1f}, mean={features_array[:, 1].mean():.1f}")
-    print(f"  R sensor range: min={features_array[:, 2].min():.1f}, max={features_array[:, 2].max():.1f}, mean={features_array[:, 2].mean():.1f}")
-    print(f"  Speed: min={features_array[:, 3].min():.1f}, max={features_array[:, 3].max():.1f}, mean={features_array[:, 3].mean():.1f}")
+    print(f"  L sensor range:  min={features_array[:, 0].min():.1f}, max={features_array[:, 0].max():.1f}, mean={features_array[:, 0].mean():.1f}")
+    print(f"  ML sensor range: min={features_array[:, 1].min():.1f}, max={features_array[:, 1].max():.1f}, mean={features_array[:, 1].mean():.1f}")
+    print(f"  C sensor range:  min={features_array[:, 2].min():.1f}, max={features_array[:, 2].max():.1f}, mean={features_array[:, 2].mean():.1f}")
+    print(f"  MR sensor range: min={features_array[:, 3].min():.1f}, max={features_array[:, 3].max():.1f}, mean={features_array[:, 3].mean():.1f}")
+    print(f"  R sensor range:  min={features_array[:, 4].min():.1f}, max={features_array[:, 4].max():.1f}, mean={features_array[:, 4].mean():.1f}")
+    print(f"  Speed:           min={features_array[:, 5].min():.1f}, max={features_array[:, 5].max():.1f}, mean={features_array[:, 5].mean():.1f}")
 
     print("\nLabel distribution:")
     print(f"  W pressed: {labels_array[:, 0].sum()}/{len(labels_array)} ({100*labels_array[:, 0].mean():.1f}%)")

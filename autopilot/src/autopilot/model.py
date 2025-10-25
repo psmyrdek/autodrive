@@ -9,18 +9,18 @@ class AutopilotNet(nn.Module):
     Feedforward neural network for autopilot control.
 
     Architecture:
-        Input (4) → FC(128) → ReLU → Dropout(0.1) → FC(64) → ReLU → Dropout(0.1) → FC(32) → ReLU → FC(4)
+        Input (6) → FC(128) → ReLU → Dropout(0.1) → FC(64) → ReLU → Dropout(0.1) → FC(32) → ReLU → FC(4)
 
-    Input features: [l_sensor_range, c_sensor_range, r_sensor_range, speed]
+    Input features: [l_sensor_range, ml_sensor_range, c_sensor_range, mr_sensor_range, r_sensor_range, speed]
     Output: [w_logit, a_logit, s_logit, d_logit] - logits for each key press (apply sigmoid for probabilities)
     """
 
-    def __init__(self, input_size: int = 4, hidden_sizes: list = None, output_size: int = 4):
+    def __init__(self, input_size: int = 6, hidden_sizes: list = None, output_size: int = 4):
         """
         Initialize the network.
 
         Args:
-            input_size: Number of input features (default: 4)
+            input_size: Number of input features (default: 6)
             hidden_sizes: List of hidden layer sizes (default: [128, 64, 32])
             output_size: Number of output classes (default: 4 for WASD)
         """
@@ -77,7 +77,7 @@ class AutopilotNet(nn.Module):
         return (probabilities >= threshold).float()
 
 
-def create_model(input_size: int = 4, hidden_sizes: list = None, output_size: int = 4) -> AutopilotNet:
+def create_model(input_size: int = 6, hidden_sizes: list = None, output_size: int = 4) -> AutopilotNet:
     """
     Factory function to create an AutopilotNet model.
 
@@ -112,23 +112,31 @@ def save_model(model: AutopilotNet, path: str, normalization_params: dict = None
         path: Path to save the model
         normalization_params: Optional normalization parameters to save with model
     """
-    # Extract hidden sizes from the model architecture
+    # Extract input size and hidden sizes from the model architecture
+    input_size = None
+    output_size = None
     hidden_sizes = []
+
     for module in model.network:
         if isinstance(module, nn.Linear):
-            # All Linear layers except the last one are hidden layers
+            if input_size is None:
+                # First linear layer gives us input size
+                input_size = module.in_features
+            # All Linear layers give us their output features
             hidden_sizes.append(module.out_features)
 
-    # Remove the last layer (output layer)
+    # The last layer's output size is our output size
     if hidden_sizes:
+        output_size = hidden_sizes[-1]
+        # Remove the last layer (output layer) from hidden sizes
         hidden_sizes = hidden_sizes[:-1]
 
     checkpoint = {
         'model_state_dict': model.state_dict(),
         'model_config': {
-            'input_size': 4,
+            'input_size': input_size if input_size else 6,
             'hidden_sizes': hidden_sizes if hidden_sizes else [128, 64, 32],
-            'output_size': 4
+            'output_size': output_size if output_size else 4
         }
     }
 

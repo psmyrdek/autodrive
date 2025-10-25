@@ -62,7 +62,9 @@ class AutopilotInference:
     def predict(
         self,
         l_sensor: float,
+        ml_sensor: float,
         c_sensor: float,
+        mr_sensor: float,
         r_sensor: float,
         speed: float,
         threshold: float = 0.5
@@ -72,7 +74,9 @@ class AutopilotInference:
 
         Args:
             l_sensor: Left sensor range
+            ml_sensor: Mid-left sensor range
             c_sensor: Center sensor range
+            mr_sensor: Mid-right sensor range
             r_sensor: Right sensor range
             speed: Current speed
             threshold: Threshold for binary classification
@@ -93,7 +97,7 @@ class AutopilotInference:
             }
         """
         # Prepare features
-        features = np.array([[l_sensor, c_sensor, r_sensor, speed]], dtype=np.float32)
+        features = np.array([[l_sensor, ml_sensor, c_sensor, mr_sensor, r_sensor, speed]], dtype=np.float32)
 
         # Normalize
         features_normalized = self.normalize_features(features)
@@ -134,7 +138,7 @@ class AutopilotInference:
         Predict control commands for a batch of samples.
 
         Args:
-            features: Array of shape (N, 4) with features
+            features: Array of shape (N, 6) with features [l_sensor, ml_sensor, c_sensor, mr_sensor, r_sensor, speed]
             threshold: Threshold for binary classification
 
         Returns:
@@ -195,17 +199,17 @@ def evaluate_on_telemetry(model_path: str, telemetry_dir: str = "../server/telem
 
     # Show some example predictions
     print("\nExample predictions (first 5 samples):")
-    print("=" * 80)
-    print(f"{'Sensors (L/C/R/Speed)':<30} {'True':<15} {'Predicted':<15} {'Probs (W/A/S/D)'}")
-    print("=" * 80)
+    print("=" * 100)
+    print(f"{'Sensors (L/ML/C/MR/R/Speed)':<45} {'True':<15} {'Predicted':<15} {'Probs (W/A/S/D)'}")
+    print("=" * 100)
 
     for i in range(min(5, len(features))):
-        sensors = f"{features[i, 0]:.0f}/{features[i, 1]:.0f}/{features[i, 2]:.0f}/{features[i, 3]:.0f}"
+        sensors = f"{features[i, 0]:.0f}/{features[i, 1]:.0f}/{features[i, 2]:.0f}/{features[i, 3]:.0f}/{features[i, 4]:.0f}/{features[i, 5]:.0f}"
         true_cmd = f"{'W' if labels[i, 0] else '_'}{'A' if labels[i, 1] else '_'}{'S' if labels[i, 2] else '_'}{'D' if labels[i, 3] else '_'}"
         pred_cmd = f"{'W' if commands[i, 0] else '_'}{'A' if commands[i, 1] else '_'}{'S' if commands[i, 2] else '_'}{'D' if commands[i, 3] else '_'}"
         probs = f"{probabilities[i, 0]:.2f}/{probabilities[i, 1]:.2f}/{probabilities[i, 2]:.2f}/{probabilities[i, 3]:.2f}"
 
-        print(f"{sensors:<30} {true_cmd:<15} {pred_cmd:<15} {probs}")
+        print(f"{sensors:<45} {true_cmd:<15} {pred_cmd:<15} {probs}")
 
 
 def main():
@@ -251,10 +255,22 @@ def main():
         help="Left sensor range"
     )
     predict_parser.add_argument(
+        "--ml-sensor",
+        type=float,
+        required=True,
+        help="Mid-left sensor range"
+    )
+    predict_parser.add_argument(
         "--c-sensor",
         type=float,
         required=True,
         help="Center sensor range"
+    )
+    predict_parser.add_argument(
+        "--mr-sensor",
+        type=float,
+        required=True,
+        help="Mid-right sensor range"
     )
     predict_parser.add_argument(
         "--r-sensor",
@@ -290,14 +306,16 @@ def main():
         inference = AutopilotInference(args.model_path, args.device)
         result = inference.predict(
             args.l_sensor,
+            args.ml_sensor,
             args.c_sensor,
+            args.mr_sensor,
             args.r_sensor,
             args.speed,
             args.threshold
         )
 
         print("\nPrediction:")
-        print(f"  Input: L={args.l_sensor}, C={args.c_sensor}, R={args.r_sensor}, Speed={args.speed}")
+        print(f"  Input: L={args.l_sensor}, ML={args.ml_sensor}, C={args.c_sensor}, MR={args.mr_sensor}, R={args.r_sensor}, Speed={args.speed}")
         print(f"  Commands: W={result['forward']}, A={result['left']}, S={result['backward']}, D={result['right']}")
         print(f"  Probabilities: W={result['probabilities']['w']:.3f}, A={result['probabilities']['a']:.3f}, "
               f"S={result['probabilities']['s']:.3f}, D={result['probabilities']['d']:.3f}")

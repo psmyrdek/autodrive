@@ -9,7 +9,7 @@ def mirror_telemetry(features: np.ndarray, labels: np.ndarray) -> tuple:
     This effectively doubles the training data by creating mirrored driving scenarios.
 
     Args:
-        features: Array of shape (N, 4) - [l_sensor, c_sensor, r_sensor, speed]
+        features: Array of shape (N, 6) - [l_sensor, ml_sensor, c_sensor, mr_sensor, r_sensor, speed]
         labels: Array of shape (N, 4) - [w_pressed, a_pressed, s_pressed, d_pressed]
 
     Returns:
@@ -19,7 +19,9 @@ def mirror_telemetry(features: np.ndarray, labels: np.ndarray) -> tuple:
     mirrored_labels = labels.copy()
 
     # Swap left and right sensor readings
-    mirrored_features[:, [0, 2]] = mirrored_features[:, [2, 0]]  # Swap columns 0 and 2
+    # L (0) <-> R (4), ML (1) <-> MR (3), C (2) stays same, speed (5) stays same
+    mirrored_features[:, [0, 4]] = mirrored_features[:, [4, 0]]  # Swap L and R
+    mirrored_features[:, [1, 3]] = mirrored_features[:, [3, 1]]  # Swap ML and MR
 
     # Swap A and D key presses
     mirrored_labels[:, [1, 3]] = mirrored_labels[:, [3, 1]]  # Swap columns 1 and 3
@@ -33,7 +35,7 @@ def add_sensor_noise(features: np.ndarray, noise_level: float = 2.0) -> np.ndarr
     Speed is not modified as it's more reliable.
 
     Args:
-        features: Array of shape (N, 4) - [l_sensor, c_sensor, r_sensor, speed]
+        features: Array of shape (N, 6) - [l_sensor, ml_sensor, c_sensor, mr_sensor, r_sensor, speed]
         noise_level: Standard deviation of Gaussian noise (default: 2.0 pixels)
 
     Returns:
@@ -41,12 +43,12 @@ def add_sensor_noise(features: np.ndarray, noise_level: float = 2.0) -> np.ndarr
     """
     noisy_features = features.copy()
 
-    # Add noise only to sensor readings (first 3 columns), not speed
-    sensor_noise = np.random.normal(0, noise_level, size=(len(features), 3))
-    noisy_features[:, :3] += sensor_noise
+    # Add noise only to sensor readings (first 5 columns), not speed
+    sensor_noise = np.random.normal(0, noise_level, size=(len(features), 5))
+    noisy_features[:, :5] += sensor_noise
 
     # Clamp sensor values to valid range [0, 1500]
-    noisy_features[:, :3] = np.clip(noisy_features[:, :3], 0, 1500)
+    noisy_features[:, :5] = np.clip(noisy_features[:, :5], 0, 1500)
 
     return noisy_features
 

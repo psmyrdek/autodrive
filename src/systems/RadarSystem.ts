@@ -4,22 +4,33 @@ import type {CarBody} from "./CarPhysics";
 
 export interface RadarDistances {
   left: number;
+  midLeft: number;
   center: number;
+  midRight: number;
   right: number;
 }
 
 export class RadarSystem {
   private readonly RADAR_MAX_DISTANCE = 1500;
   private readonly ANGLE_OFFSET = (20 * Math.PI) / 180; // 20 degrees in radians
+  private readonly MID_ANGLE_OFFSET = (10 * Math.PI) / 180; // 10 degrees in radians
 
   private radarGraphics: Phaser.GameObjects.Graphics;
   private radarTexts: {
     left: Phaser.GameObjects.Text;
+    midLeft: Phaser.GameObjects.Text;
     center: Phaser.GameObjects.Text;
+    midRight: Phaser.GameObjects.Text;
     right: Phaser.GameObjects.Text;
   };
 
-  public distances: RadarDistances = {left: 0, center: 0, right: 0};
+  public distances: RadarDistances = {
+    left: 0,
+    midLeft: 0,
+    center: 0,
+    midRight: 0,
+    right: 0,
+  };
   private scene: Phaser.Scene;
 
   constructor(scene: Phaser.Scene) {
@@ -40,8 +51,10 @@ export class RadarSystem {
 
     return {
       left: this.scene.add.text(20, 500, "L: 0", textStyle),
-      center: this.scene.add.text(20, 530, "C: 0", textStyle),
-      right: this.scene.add.text(20, 560, "R: 0", textStyle),
+      midLeft: this.scene.add.text(20, 530, "ML: 0", textStyle),
+      center: this.scene.add.text(20, 560, "C: 0", textStyle),
+      midRight: this.scene.add.text(20, 590, "MR: 0", textStyle),
+      right: this.scene.add.text(20, 620, "R: 0", textStyle),
     };
   }
 
@@ -64,13 +77,21 @@ export class RadarSystem {
     const rightSensorX = carBody.x + (hw * cos + hh * sin);
     const rightSensorY = carBody.y + (hw * sin - hh * cos);
 
-    // Ray directions with 20-degree angles for corners
+    // Ray directions with 20-degree angles for corners and 10-degree for mid sensors
     const leftAngle = rotation + this.ANGLE_OFFSET;
     const leftDirX = Math.cos(leftAngle);
     const leftDirY = Math.sin(leftAngle);
 
+    const midLeftAngle = rotation + this.MID_ANGLE_OFFSET;
+    const midLeftDirX = Math.cos(midLeftAngle);
+    const midLeftDirY = Math.sin(midLeftAngle);
+
     const centerDirX = cos;
     const centerDirY = sin;
+
+    const midRightAngle = rotation - this.MID_ANGLE_OFFSET;
+    const midRightDirX = Math.cos(midRightAngle);
+    const midRightDirY = Math.sin(midRightAngle);
 
     const rightAngle = rotation - this.ANGLE_OFFSET;
     const rightDirX = Math.cos(rightAngle);
@@ -84,11 +105,25 @@ export class RadarSystem {
       leftDirY,
       track
     );
+    const midLeftHit = this.castRay(
+      centerSensorX,
+      centerSensorY,
+      midLeftDirX,
+      midLeftDirY,
+      track
+    );
     const centerHit = this.castRay(
       centerSensorX,
       centerSensorY,
       centerDirX,
       centerDirY,
+      track
+    );
+    const midRightHit = this.castRay(
+      centerSensorX,
+      centerSensorY,
+      midRightDirX,
+      midRightDirY,
       track
     );
     const rightHit = this.castRay(
@@ -101,15 +136,21 @@ export class RadarSystem {
 
     // Update distances
     this.distances.left = leftHit ? leftHit.distance : this.RADAR_MAX_DISTANCE;
+    this.distances.midLeft = midLeftHit
+      ? midLeftHit.distance
+      : this.RADAR_MAX_DISTANCE;
     this.distances.center = centerHit
       ? centerHit.distance
+      : this.RADAR_MAX_DISTANCE;
+    this.distances.midRight = midRightHit
+      ? midRightHit.distance
       : this.RADAR_MAX_DISTANCE;
     this.distances.right = rightHit
       ? rightHit.distance
       : this.RADAR_MAX_DISTANCE;
 
     // Draw radar beams
-    this.radarGraphics.lineStyle(2, 0x00ff00, 0.6);
+    this.radarGraphics.lineStyle(2, 0x00ff00, 0.3);
 
     if (leftHit) {
       this.radarGraphics.lineBetween(
@@ -119,12 +160,28 @@ export class RadarSystem {
         leftHit.y
       );
     }
+    if (midLeftHit) {
+      this.radarGraphics.lineBetween(
+        centerSensorX,
+        centerSensorY,
+        midLeftHit.x,
+        midLeftHit.y
+      );
+    }
     if (centerHit) {
       this.radarGraphics.lineBetween(
         centerSensorX,
         centerSensorY,
         centerHit.x,
         centerHit.y
+      );
+    }
+    if (midRightHit) {
+      this.radarGraphics.lineBetween(
+        centerSensorX,
+        centerSensorY,
+        midRightHit.x,
+        midRightHit.y
       );
     }
     if (rightHit) {
@@ -138,7 +195,13 @@ export class RadarSystem {
 
     // Update distance text displays
     this.radarTexts.left.setText(`L: ${Math.round(this.distances.left)}`);
+    this.radarTexts.midLeft.setText(
+      `ML: ${Math.round(this.distances.midLeft)}`
+    );
     this.radarTexts.center.setText(`C: ${Math.round(this.distances.center)}`);
+    this.radarTexts.midRight.setText(
+      `MR: ${Math.round(this.distances.midRight)}`
+    );
     this.radarTexts.right.setText(`R: ${Math.round(this.distances.right)}`);
   }
 
