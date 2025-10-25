@@ -12,8 +12,8 @@ export interface RadarDistances {
 
 export class RadarSystem {
   private readonly RADAR_MAX_DISTANCE = 1500;
-  private readonly ANGLE_OFFSET = (20 * Math.PI) / 180; // 20 degrees in radians
-  private readonly MID_ANGLE_OFFSET = (10 * Math.PI) / 180; // 10 degrees in radians
+  private readonly ANGLE_OFFSET = (45 * Math.PI) / 180; // 20 degrees in radians
+  private readonly MID_ANGLE_OFFSET = (20 * Math.PI) / 180; // 10 degrees in radians
 
   private radarGraphics: Phaser.GameObjects.Graphics;
   private radarTexts: {

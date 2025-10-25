@@ -1,5 +1,5 @@
-import type { CarBody } from "./CarPhysics";
-import type { RadarDistances } from "./RadarSystem";
+import type {CarBody} from "./CarPhysics";
+import type {RadarDistances} from "./RadarSystem";
 
 export interface ControlCommands {
   forward: boolean;
@@ -28,6 +28,7 @@ export class AutopilotSystem {
 
   // ML mode configuration
   private readonly ML_API_URL = "http://localhost:8000/predict";
+  private readonly NETWORK_SAFETY_MARGIN = 20; // Subtract from sensor values to compensate for network delay
   private useMlMode: boolean;
   private mlAvailable: boolean = false;
 
@@ -47,14 +48,16 @@ export class AutopilotSystem {
     try {
       const response = await fetch("http://localhost:8000/health", {
         method: "GET",
-        headers: { "Content-Type": "application/json" },
+        headers: {"Content-Type": "application/json"},
       });
       if (response.ok) {
         this.mlAvailable = true;
         console.log("ML autopilot API is available");
       }
     } catch {
-      console.warn("ML autopilot API is not available, falling back to rule-based logic");
+      console.warn(
+        "ML autopilot API is not available, falling back to rule-based logic"
+      );
       this.mlAvailable = false;
     }
   }
@@ -85,7 +88,10 @@ export class AutopilotSystem {
       try {
         return await this.mlLogic(state);
       } catch (error) {
-        console.error("ML inference failed, falling back to rule-based logic:", error);
+        console.error(
+          "ML inference failed, falling back to rule-based logic:",
+          error
+        );
         this.mlAvailable = false; // Disable ML mode if it fails
         return this.mockLogic(state);
       }
@@ -101,7 +107,7 @@ export class AutopilotSystem {
    * - Safety: Brake hard if very close to obstacle
    */
   private mockLogic(state: CarState): ControlCommands {
-    const { sensors, speed } = state;
+    const {sensors, speed} = state;
     const commands: ControlCommands = {
       forward: false,
       backward: false,
@@ -176,27 +182,30 @@ export class AutopilotSystem {
    * Sends car state to FastAPI inference server and receives control commands.
    */
   private async mlLogic(state: CarState): Promise<ControlCommands> {
-    const { sensors, speed } = state;
+    const {sensors, speed} = state;
 
     // Prepare request payload with all 5 sensor values
+    // Apply safety margin to compensate for network delay (act as if walls are closer)
     const payload = {
-      l_sensor: sensors.left,
-      ml_sensor: sensors.midLeft,
-      c_sensor: sensors.center,
-      mr_sensor: sensors.midRight,
-      r_sensor: sensors.right,
+      l_sensor: Math.max(0, sensors.left - this.NETWORK_SAFETY_MARGIN),
+      ml_sensor: Math.max(0, sensors.midLeft - this.NETWORK_SAFETY_MARGIN),
+      c_sensor: Math.max(0, sensors.center - this.NETWORK_SAFETY_MARGIN),
+      mr_sensor: Math.max(0, sensors.midRight - this.NETWORK_SAFETY_MARGIN),
+      r_sensor: Math.max(0, sensors.right - this.NETWORK_SAFETY_MARGIN),
       speed: speed,
     };
 
     // Call FastAPI inference endpoint
     const response = await fetch(this.ML_API_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {"Content-Type": "application/json"},
       body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
-      throw new Error(`ML API error: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `ML API error: ${response.status} ${response.statusText}`
+      );
     }
 
     const result = await response.json();
