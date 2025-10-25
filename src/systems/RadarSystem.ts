@@ -209,6 +209,32 @@ export class RadarSystem {
       }
     }
 
+    // Check against obstacles
+    if (track.obstacles) {
+      for (const obstacle of track.obstacles) {
+        const intersection = this.lineIntersection(
+          originX,
+          originY,
+          rayEndX,
+          rayEndY,
+          obstacle.start.x,
+          obstacle.start.y,
+          obstacle.end.x,
+          obstacle.end.y
+        );
+
+        if (intersection) {
+          const distance = Math.sqrt(
+            (intersection.x - originX) ** 2 + (intersection.y - originY) ** 2
+          );
+          if (distance < closestDistance) {
+            closestDistance = distance;
+            closestIntersection = intersection;
+          }
+        }
+      }
+    }
+
     if (closestIntersection) {
       return {
         x: closestIntersection.x,

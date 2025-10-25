@@ -196,43 +196,82 @@ export default function Game() {
   };
 
   return (
-    <div className="relative w-full h-screen bg-gray-900">
-      <div ref={containerRef} className="w-full h-full" />
-      <TrackSwitcher onTrackChange={handleTrackChange} currentTrack={currentTrack} />
-
-      {/* Control buttons */}
-      <div className="absolute bottom-4 right-4 flex flex-col items-end gap-3">
-        {/* Autopilot toggle button */}
-        <div className="flex flex-col items-end gap-2">
-          <button
-            onClick={handleToggleAutopilot}
-            className={`${
-              isAutopilotEnabled
-                ? 'bg-green-600 hover:bg-green-700'
-                : 'bg-gray-600 hover:bg-gray-700'
-            } text-white font-semibold px-4 py-2 rounded-lg transition-colors shadow-lg`}
-          >
-            {isAutopilotEnabled ? 'Autopilot: ON' : 'Autopilot: OFF'}
-          </button>
-          <span className="text-gray-400 text-xs font-mono">
-            or press <kbd className="bg-gray-700 px-1.5 py-0.5 rounded text-gray-300">P</kbd>
-          </span>
+    <div className="w-full h-screen bg-gray-900 overflow-hidden">
+      {/* 3-column grid layout */}
+      <div className="grid grid-cols-[200px_1fr_200px] gap-2 h-full p-2">
+        {/* Left column: Track Switcher */}
+        <div className="flex flex-col overflow-hidden">
+          <TrackSwitcher onTrackChange={handleTrackChange} currentTrack={currentTrack} />
         </div>
 
-        {/* Save telemetry button */}
-        <div className="flex flex-col items-end gap-2">
-          <button
-            onClick={handleManualSaveTelemetry}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg transition-colors shadow-lg"
-          >
-            Save Telemetry
-          </button>
-          <span className="text-gray-400 text-xs font-mono">
-            or press <kbd className="bg-gray-700 px-1.5 py-0.5 rounded text-gray-300">T</kbd>
-          </span>
+        {/* Center column: Game Canvas */}
+        <div className="flex items-center justify-center overflow-hidden">
+          <div ref={containerRef} className="w-full h-full max-w-full max-h-full" />
+        </div>
+
+        {/* Right column: Controls */}
+        <div className="flex flex-col gap-2 overflow-y-auto">
+          {/* Combined Controls Section */}
+          <div className="bg-gray-800 bg-opacity-90 p-3 rounded-lg shadow-lg">
+            <h3 className="text-white font-bold mb-2 text-xs uppercase tracking-wide">Controls</h3>
+
+            {/* Autopilot */}
+            <button
+              onClick={handleToggleAutopilot}
+              className={`w-full ${
+                isAutopilotEnabled
+                  ? 'bg-green-600 hover:bg-green-700'
+                  : 'bg-gray-600 hover:bg-gray-700'
+              } text-white font-semibold px-3 py-2 rounded transition-colors text-sm mb-1`}
+            >
+              {isAutopilotEnabled ? 'Autopilot: ON' : 'Autopilot: OFF'}
+            </button>
+            <div className="text-center mb-3">
+              <span className="text-gray-400 text-xs">
+                <kbd className="bg-gray-700 px-1 py-0.5 rounded text-gray-300">P</kbd>
+              </span>
+            </div>
+
+            {/* Save Telemetry */}
+            <button
+              onClick={handleManualSaveTelemetry}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-2 rounded transition-colors text-sm mb-1"
+            >
+              Save Telemetry
+            </button>
+            <div className="text-center">
+              <span className="text-gray-400 text-xs">
+                <kbd className="bg-gray-700 px-1 py-0.5 rounded text-gray-300">T</kbd>
+              </span>
+            </div>
+          </div>
+
+          {/* Keyboard Controls Reference */}
+          <div className="bg-gray-800 bg-opacity-90 p-3 rounded-lg shadow-lg">
+            <h3 className="text-white font-bold mb-2 text-xs uppercase tracking-wide">Keyboard</h3>
+            <div className="space-y-1 text-xs text-gray-300">
+              <div className="flex justify-between items-center">
+                <span>Accelerate</span>
+                <kbd className="bg-gray-700 px-1.5 py-0.5 rounded text-gray-300">W</kbd>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Brake</span>
+                <kbd className="bg-gray-700 px-1.5 py-0.5 rounded text-gray-300">S</kbd>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Turn Left</span>
+                <kbd className="bg-gray-700 px-1.5 py-0.5 rounded text-gray-300">A</kbd>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Turn Right</span>
+                <kbd className="bg-gray-700 px-1.5 py-0.5 rounded text-gray-300">D</kbd>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* Modals and Toasts (overlay on top) */}
       <CrashModal
         isOpen={showCrashModal}
         elapsedTime={crashTime}

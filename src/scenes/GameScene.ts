@@ -104,6 +104,17 @@ export default class GameScene extends Phaser.Scene {
     if (this.track.innerBorder.length > 1) {
       this.drawPath(this.track.innerBorder);
     }
+
+    // Draw obstacles in orange
+    if (this.track.obstacles && this.track.obstacles.length > 0 && this.graphics) {
+      this.graphics.lineStyle(5, 0xf97316, 1); // Orange color
+      this.track.obstacles.forEach((obstacle) => {
+        this.graphics!.beginPath();
+        this.graphics!.moveTo(obstacle.start.x, obstacle.start.y);
+        this.graphics!.lineTo(obstacle.end.x, obstacle.end.y);
+        this.graphics!.strokePath();
+      });
+    }
   }
 
   private drawPath(points: {x: number; y: number}[]) {
@@ -203,7 +214,8 @@ export default class GameScene extends Phaser.Scene {
         this.carPhysics.carBody.height,
         this.carPhysics.carBody.rotation,
         this.track.outerBorder,
-        this.track.innerBorder
+        this.track.innerBorder,
+        this.track.obstacles
       );
 
       if (collision) {

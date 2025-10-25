@@ -40,19 +40,19 @@ export default function TrackSwitcher({ onTrackChange, currentTrack }: TrackSwit
 
   if (loading) {
     return (
-      <div className="absolute top-4 left-4 bg-gray-800 bg-opacity-90 p-4 rounded shadow-lg z-10">
-        <p className="text-white">Loading tracks...</p>
+      <div className="bg-gray-800 bg-opacity-90 p-3 rounded-lg shadow-lg h-full">
+        <p className="text-white text-sm">Loading tracks...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="absolute top-4 left-4 bg-gray-800 bg-opacity-90 p-4 rounded shadow-lg z-10">
-        <p className="text-red-400">Error: {error}</p>
+      <div className="bg-gray-800 bg-opacity-90 p-3 rounded-lg shadow-lg h-full">
+        <p className="text-red-400 text-sm">Error: {error}</p>
         <button
           onClick={fetchTracks}
-          className="mt-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="mt-2 px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs"
         >
           Retry
         </button>
@@ -62,21 +62,21 @@ export default function TrackSwitcher({ onTrackChange, currentTrack }: TrackSwit
 
   if (tracks.length === 0) {
     return (
-      <div className="absolute top-4 left-4 bg-gray-800 bg-opacity-90 p-4 rounded shadow-lg z-10">
-        <p className="text-white">No tracks available. Create one in Track Builder!</p>
+      <div className="bg-gray-800 bg-opacity-90 p-3 rounded-lg shadow-lg h-full">
+        <p className="text-white text-sm">No tracks available. Create one in Track Builder!</p>
       </div>
     );
   }
 
   return (
-    <div className="absolute top-4 left-4 bg-gray-800 bg-opacity-90 p-4 rounded shadow-lg z-10">
-      <h3 className="text-white font-bold mb-2">Select Track</h3>
-      <div className="flex flex-col gap-2">
+    <div className="bg-gray-800 bg-opacity-90 p-3 rounded-lg shadow-lg h-full flex flex-col">
+      <h3 className="text-white font-bold mb-2 text-xs uppercase tracking-wide">Tracks</h3>
+      <div className="flex flex-col gap-1 overflow-y-auto flex-1">
         {tracks.map((track) => (
           <button
             key={track.name}
             onClick={() => onTrackChange(track)}
-            className={`px-4 py-2 rounded text-left transition-colors ${
+            className={`px-3 py-1.5 rounded text-left transition-colors text-sm ${
               currentTrack?.name === track.name
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-700 text-gray-200 hover:bg-gray-600'

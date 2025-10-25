@@ -1,4 +1,4 @@
-import type { Point } from '../types/track';
+import type { Point, Obstacle } from '../types/track';
 
 /**
  * Point-in-polygon algorithm using ray casting
@@ -58,6 +58,63 @@ function getCarCorners(
 }
 
 /**
+ * Check if two line segments intersect
+ * Line 1: from p1 to p2
+ * Line 2: from p3 to p4
+ */
+function doLineSegmentsIntersect(
+  p1: Point,
+  p2: Point,
+  p3: Point,
+  p4: Point
+): boolean {
+  const denominator =
+    (p4.y - p3.y) * (p2.x - p1.x) - (p4.x - p3.x) * (p2.y - p1.y);
+
+  // Lines are parallel
+  if (denominator === 0) return false;
+
+  const ua =
+    ((p4.x - p3.x) * (p1.y - p3.y) - (p4.y - p3.y) * (p1.x - p3.x)) /
+    denominator;
+  const ub =
+    ((p2.x - p1.x) * (p1.y - p3.y) - (p2.y - p1.y) * (p1.x - p3.x)) /
+    denominator;
+
+  // Check if intersection point is on both line segments
+  return ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1;
+}
+
+/**
+ * Check if any edge of the car intersects with obstacles
+ */
+function checkObstacleCollision(
+  carCorners: Point[],
+  obstacles: Obstacle[]
+): boolean {
+  // Create car edges from corners
+  const carEdges: [Point, Point][] = [
+    [carCorners[0], carCorners[1]],
+    [carCorners[1], carCorners[2]],
+    [carCorners[2], carCorners[3]],
+    [carCorners[3], carCorners[0]],
+  ];
+
+  // Check each car edge against each obstacle
+  for (const [edgeStart, edgeEnd] of carEdges) {
+    for (const obstacle of obstacles) {
+      if (
+        doLineSegmentsIntersect(edgeStart, edgeEnd, obstacle.start, obstacle.end)
+      ) {
+        return true; // Collision detected
+      }
+    }
+  }
+
+  return false; // No collision
+}
+
+/**
  * Check if car (rectangular bounds) collides with track borders
  * Car should be inside outer border and outside inner border
  * Checks all 4 corners of the car
@@ -69,7 +126,8 @@ export function checkCarCollision(
   carHeight: number,
   carRotation: number,
   outerBorder: Point[],
-  innerBorder: Point[]
+  innerBorder: Point[],
+  obstacles?: Obstacle[]
 ): boolean {
   // Get all 4 corners of the car
   const corners = getCarCorners(carX, carY, carWidth, carHeight, carRotation);
@@ -86,6 +144,13 @@ export function checkCarCollision(
     const insideInner = isPointInPolygon(corner, innerBorder);
     if (insideInner) {
       return true; // Collision: car corner went into inner barrier
+    }
+  }
+
+  // Check if car hits any obstacles
+  if (obstacles && obstacles.length > 0) {
+    if (checkObstacleCollision(corners, obstacles)) {
+      return true; // Collision: car hit an obstacle
     }
   }
 

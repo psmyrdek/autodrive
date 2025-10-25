@@ -1,8 +1,8 @@
 import {useEffect, useRef, useState} from "react";
-import type {Point, Track} from "../types/track";
+import type {Point, Track, Obstacle} from "../types/track";
 import {interpolateDensePoints} from "../utils/curveInterpolation";
 
-type DrawingTool = "outer-border" | "inner-border" | "start-point";
+type DrawingTool = "outer-border" | "inner-border" | "start-point" | "obstacles";
 
 const drawSmoothCurve = (
   ctx: CanvasRenderingContext2D,
@@ -95,6 +95,10 @@ export default function TrackBuilder() {
   const [outerBorder, setOuterBorder] = useState<Point[]>([]);
   const [innerBorder, setInnerBorder] = useState<Point[]>([]);
   const [startPoint, setStartPoint] = useState<Point | null>(null);
+  const [obstacles, setObstacles] = useState<Obstacle[]>([]);
+  const [currentObstacleStart, setCurrentObstacleStart] = useState<Point | null>(
+    null
+  );
   const [isOuterComplete, setIsOuterComplete] = useState(false);
   const [isInnerComplete, setIsInnerComplete] = useState(false);
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -135,7 +139,42 @@ export default function TrackBuilder() {
       ctx.arc(startPoint.x, startPoint.y, 8, 0, Math.PI * 2);
       ctx.fill();
     }
-  }, [outerBorder, innerBorder, startPoint, isOuterComplete, isInnerComplete]);
+
+    // Draw obstacles
+    obstacles.forEach((obstacle) => {
+      ctx.strokeStyle = "#f97316"; // Orange
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(obstacle.start.x, obstacle.start.y);
+      ctx.lineTo(obstacle.end.x, obstacle.end.y);
+      ctx.stroke();
+
+      // Draw endpoint circles
+      ctx.fillStyle = "#f97316";
+      ctx.beginPath();
+      ctx.arc(obstacle.start.x, obstacle.start.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(obstacle.end.x, obstacle.end.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Draw current obstacle being created
+    if (currentObstacleStart) {
+      ctx.fillStyle = "#f97316";
+      ctx.beginPath();
+      ctx.arc(currentObstacleStart.x, currentObstacleStart.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }, [
+    outerBorder,
+    innerBorder,
+    startPoint,
+    obstacles,
+    currentObstacleStart,
+    isOuterComplete,
+    isInnerComplete,
+  ]);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -151,6 +190,18 @@ export default function TrackBuilder() {
       setInnerBorder([...innerBorder, {x, y}]);
     } else if (currentTool === "start-point") {
       setStartPoint({x, y});
+    } else if (currentTool === "obstacles") {
+      if (!currentObstacleStart) {
+        // First click: set start point
+        setCurrentObstacleStart({x, y});
+      } else {
+        // Second click: create obstacle
+        setObstacles([
+          ...obstacles,
+          {start: currentObstacleStart, end: {x, y}},
+        ]);
+        setCurrentObstacleStart(null);
+      }
     }
   };
 
@@ -187,6 +238,7 @@ export default function TrackBuilder() {
       outerBorder: denseOuterBorder,
       innerBorder: denseInnerBorder,
       startPoint,
+      obstacles: obstacles.length > 0 ? obstacles : undefined,
       sparseOuterBorder: outerBorder,
       sparseInnerBorder: innerBorder,
     };
@@ -219,6 +271,8 @@ export default function TrackBuilder() {
     setOuterBorder([]);
     setInnerBorder([]);
     setStartPoint(null);
+    setObstacles([]);
+    setCurrentObstacleStart(null);
     setIsOuterComplete(false);
     setIsInnerComplete(false);
     setCurrentTool("outer-border");
@@ -237,6 +291,8 @@ export default function TrackBuilder() {
         setOuterBorder(track.sparseOuterBorder || track.outerBorder);
         setInnerBorder(track.sparseInnerBorder || track.innerBorder);
         setStartPoint(track.startPoint);
+        setObstacles(track.obstacles || []);
+        setCurrentObstacleStart(null);
         setIsOuterComplete(true);
         setIsInnerComplete(true);
       }
@@ -303,6 +359,19 @@ export default function TrackBuilder() {
             >
               Start Point {startPoint && "✓"}
             </button>
+            <button
+              onClick={() => {
+                setCurrentTool("obstacles");
+                setCurrentObstacleStart(null);
+              }}
+              className={`px-3 py-2 rounded-md text-sm font-medium ${
+                currentTool === "obstacles"
+                  ? "bg-orange-500 text-white"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+            >
+              Obstacles ({obstacles.length})
+            </button>
           </div>
         </div>
 
@@ -313,6 +382,7 @@ export default function TrackBuilder() {
             <li>Single-click to add points</li>
             <li>Double-click to complete outline</li>
             <li>Complete outer border first</li>
+            <li>Obstacles: 2 clicks (start, end)</li>
           </ul>
         </div>
 
