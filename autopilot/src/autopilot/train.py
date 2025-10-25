@@ -1,6 +1,7 @@
 """Training script for autopilot neural network."""
 
 import argparse
+import os
 from pathlib import Path
 
 import numpy as np
@@ -45,7 +46,7 @@ def calculate_accuracy(predictions: torch.Tensor, labels: torch.Tensor, threshol
     return accuracies
 
 
-def train_epoch(model, train_loader, criterion, optimizer, device):
+def train_epoch(model, train_loader, criterion, optimizer, device, verbose=True):
     """
     Train for one epoch.
 
@@ -55,6 +56,7 @@ def train_epoch(model, train_loader, criterion, optimizer, device):
         criterion: Loss function
         optimizer: Optimizer
         device: Device to train on
+        verbose: Whether to show progress bar
 
     Returns:
         Dictionary with average loss and accuracy metrics
@@ -63,7 +65,8 @@ def train_epoch(model, train_loader, criterion, optimizer, device):
     total_loss = 0
     all_accuracies = []
 
-    progress_bar = tqdm(train_loader, desc="Training")
+    # Disable progress bar in CI or when verbose=False
+    progress_bar = tqdm(train_loader, desc="Training", disable=not verbose)
 
     for features, labels in progress_bar:
         features = features.to(device)
@@ -84,10 +87,11 @@ def train_epoch(model, train_loader, criterion, optimizer, device):
         all_accuracies.append(accuracies)
 
         # Update progress bar
-        progress_bar.set_postfix({
-            'loss': f"{loss.item():.4f}",
-            'acc': f"{accuracies['overall_accuracy']:.3f}"
-        })
+        if verbose:
+            progress_bar.set_postfix({
+                'loss': f"{loss.item():.4f}",
+                'acc': f"{accuracies['overall_accuracy']:.3f}"
+            })
 
     # Calculate average metrics
     avg_loss = total_loss / len(train_loader)
@@ -151,7 +155,8 @@ def train(
     val_split: float = 0.2,
     device: str = None,
     use_augmentation: bool = True,
-    hidden_sizes: list = None
+    hidden_sizes: list = None,
+    quiet: bool = False
 ):
     """
     Main training function.
@@ -164,7 +169,16 @@ def train(
         learning_rate: Learning rate for optimizer
         val_split: Validation split ratio
         device: Device to train on (cuda/mps/cpu)
+        use_augmentation: Whether to use data augmentation
+        hidden_sizes: Hidden layer sizes for the model
+        quiet: Reduce logging output (auto-enabled in CI)
     """
+    # Auto-detect CI environment
+    is_ci = os.getenv('CI', 'false').lower() == 'true' or os.getenv('GITHUB_ACTIONS') == 'true'
+    quiet = quiet or is_ci
+
+    # Set print frequency (every N epochs) when quiet
+    print_freq = 10 if quiet else 1
     # Create output directory
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -237,39 +251,51 @@ def train(
 
     # Training loop
     print(f"\n=== Training for {epochs} epochs ===")
+    if quiet:
+        print(f"Running in quiet mode (printing every {print_freq} epochs)")
+
     best_val_loss = float('inf')
+    best_val_acc = 0.0
+    best_epoch = 0
 
     for epoch in range(epochs):
-        print(f"\nEpoch {epoch + 1}/{epochs}")
-
         # Train
-        train_metrics = train_epoch(model, train_loader, criterion, optimizer, device)
+        train_metrics = train_epoch(model, train_loader, criterion, optimizer, device, verbose=not quiet)
 
         # Validate
         val_metrics = validate(model, val_loader, criterion, device)
 
-        # Print metrics
-        print(f"Train - Loss: {train_metrics['loss']:.4f}, Acc: {train_metrics['overall_accuracy']:.3f}")
-        print(f"  W: {train_metrics['w_accuracy']:.3f}, A: {train_metrics['a_accuracy']:.3f}, "
-              f"S: {train_metrics['s_accuracy']:.3f}, D: {train_metrics['d_accuracy']:.3f}")
-
-        print(f"Val   - Loss: {val_metrics['loss']:.4f}, Acc: {val_metrics['overall_accuracy']:.3f}")
-        print(f"  W: {val_metrics['w_accuracy']:.3f}, A: {val_metrics['a_accuracy']:.3f}, "
-              f"S: {val_metrics['s_accuracy']:.3f}, D: {val_metrics['d_accuracy']:.3f}")
+        # Print metrics at intervals or if it's the last epoch
+        should_print = (epoch + 1) % print_freq == 0 or epoch == epochs - 1
+        if should_print:
+            print(f"\nEpoch {epoch + 1}/{epochs}")
+            print(f"Train - Loss: {train_metrics['loss']:.4f}, Acc: {train_metrics['overall_accuracy']:.3f}")
+            if not quiet:
+                print(f"  W: {train_metrics['w_accuracy']:.3f}, A: {train_metrics['a_accuracy']:.3f}, "
+                      f"S: {train_metrics['s_accuracy']:.3f}, D: {train_metrics['d_accuracy']:.3f}")
+            print(f"Val   - Loss: {val_metrics['loss']:.4f}, Acc: {val_metrics['overall_accuracy']:.3f}")
+            if not quiet:
+                print(f"  W: {val_metrics['w_accuracy']:.3f}, A: {val_metrics['a_accuracy']:.3f}, "
+                      f"S: {val_metrics['s_accuracy']:.3f}, D: {val_metrics['d_accuracy']:.3f}")
 
         # Save best model
         if val_metrics['loss'] < best_val_loss:
             best_val_loss = val_metrics['loss']
+            best_val_acc = val_metrics['overall_accuracy']
+            best_epoch = epoch + 1
             model_path = output_path / "best_model.pt"
             save_model(model, str(model_path), norm_params)
-            print(f"✓ Saved best model (val_loss: {best_val_loss:.4f})")
+            if should_print or not quiet:
+                print(f"✓ Saved best model (epoch {best_epoch}, val_loss: {best_val_loss:.4f}, val_acc: {best_val_acc:.3f})")
 
     # Save final model
     final_model_path = output_path / "final_model.pt"
     save_model(model, str(final_model_path), norm_params)
 
     print(f"\n=== Training Complete ===")
+    print(f"Best epoch: {best_epoch}/{epochs}")
     print(f"Best validation loss: {best_val_loss:.4f}")
+    print(f"Best validation accuracy: {best_val_acc:.3f}")
     print(f"Models saved to {output_dir}/")
 
 
@@ -331,6 +357,11 @@ def main():
         default=None,
         help="Hidden layer sizes as JSON array (e.g., '[128, 64, 32]')"
     )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Reduce logging output (auto-enabled in CI environments)"
+    )
 
     args = parser.parse_args()
 
@@ -356,7 +387,8 @@ def main():
         val_split=args.val_split,
         device=args.device,
         use_augmentation=not args.no_augmentation,
-        hidden_sizes=hidden_sizes
+        hidden_sizes=hidden_sizes,
+        quiet=args.quiet
     )
 
 

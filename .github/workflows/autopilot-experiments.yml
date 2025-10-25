@@ -1,12 +1,12 @@
 name: Autopilot Training Experiments
 
 on:
-  workflow_dispatch:  # Manual trigger for controlled experimentation
+  workflow_dispatch: # Manual trigger for controlled experimentation
   push:
     branches: [main]
     paths:
-      - 'autopilot/**'
-      - 'server/telemetry/**'
+      - "autopilot/**"
+      - "server/telemetry/**"
 
 jobs:
   train:
@@ -14,35 +14,23 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: baseline
-            learning_rate: 0.001
-            batch_size: 32
-            hidden_sizes: "[128, 64, 32]"
-            description: "Baseline configuration with current defaults"
-
-          - name: low-lr
-            learning_rate: 0.0001
-            batch_size: 32
-            hidden_sizes: "[128, 64, 32]"
-            description: "Lower learning rate for more stable training"
-
-          - name: high-lr
-            learning_rate: 0.01
-            batch_size: 32
-            hidden_sizes: "[128, 64, 32]"
-            description: "Higher learning rate for faster convergence"
-
-          - name: wider-network
-            learning_rate: 0.001
-            batch_size: 32
-            hidden_sizes: "[256, 128, 64]"
-            description: "Wider network with more capacity"
-
           - name: deeper-network
             learning_rate: 0.001
             batch_size: 32
             hidden_sizes: "[128, 64, 32, 16]"
-            description: "Deeper network with more layers"
+            description: "Deeper network with 4 hidden layers (current best)"
+
+          - name: deeper-network-plus1
+            learning_rate: 0.001
+            batch_size: 32
+            hidden_sizes: "[128, 64, 32, 16, 8]"
+            description: "Even deeper network with 5 hidden layers (+1 layer)"
+
+          - name: deeper-network-plus2
+            learning_rate: 0.001
+            batch_size: 32
+            hidden_sizes: "[128, 64, 32, 16, 8, 4]"
+            description: "Very deep network with 6 hidden layers (+2 layers)"
 
     steps:
       - name: Checkout code
