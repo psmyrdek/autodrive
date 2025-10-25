@@ -116,12 +116,13 @@ export class AutopilotSystem {
    */
   async getControlCommands(state: CarState): Promise<ControlCommands> {
     // Add current observation to buffer
+    const THRESHOLD = 40;
     const observation: Observation = {
-      l: state.sensors.left,
-      ml: state.sensors.midLeft,
-      c: state.sensors.center,
-      mr: state.sensors.midRight,
-      r: state.sensors.right,
+      l: Math.max(0, state.sensors.left - THRESHOLD),
+      ml: Math.max(0, state.sensors.midLeft - THRESHOLD),
+      c: Math.max(0, state.sensors.center - THRESHOLD),
+      mr: Math.max(0, state.sensors.midRight - THRESHOLD),
+      r: Math.max(0, state.sensors.right - THRESHOLD),
       speed: state.speed,
     };
 
