@@ -14,7 +14,7 @@ export interface TelemetryData {
 }
 
 export class TelemetryTracker {
-  private readonly TELEMETRY_SAMPLE_INTERVAL = 100;
+  private readonly TELEMETRY_SAMPLE_INTERVAL = 50; // Increased from 100ms to 50ms (20Hz)
 
   private telemetryData: TelemetryData[] = [];
   private lastTelemetrySample: number = 0;

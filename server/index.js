@@ -10,7 +10,9 @@ const app = express();
 const PORT = 3001;
 
 // Middleware
-app.use(express.json());
+// Increased limit from default 100kb to 10mb to handle large telemetry payloads
+// With 50ms sampling, a 60-second run can generate ~1200 samples (~180kb)
+app.use(express.json({ limit: '10mb' }));
 
 // CORS middleware for development
 app.use((req, res, next) => {

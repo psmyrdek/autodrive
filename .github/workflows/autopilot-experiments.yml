@@ -1,0 +1,143 @@
+name: Autopilot Training Experiments
+
+on:
+  workflow_dispatch:  # Manual trigger for controlled experimentation
+  push:
+    branches: [main]
+    paths:
+      - 'autopilot/**'
+      - 'server/telemetry/**'
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: baseline
+            learning_rate: 0.001
+            batch_size: 32
+            hidden_sizes: "[128, 64, 32]"
+            description: "Baseline configuration with current defaults"
+
+          - name: low-lr
+            learning_rate: 0.0001
+            batch_size: 32
+            hidden_sizes: "[128, 64, 32]"
+            description: "Lower learning rate for more stable training"
+
+          - name: high-lr
+            learning_rate: 0.01
+            batch_size: 32
+            hidden_sizes: "[128, 64, 32]"
+            description: "Higher learning rate for faster convergence"
+
+          - name: wider-network
+            learning_rate: 0.001
+            batch_size: 32
+            hidden_sizes: "[256, 128, 64]"
+            description: "Wider network with more capacity"
+
+          - name: deeper-network
+            learning_rate: 0.001
+            batch_size: 32
+            hidden_sizes: "[128, 64, 32, 16]"
+            description: "Deeper network with more layers"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        working-directory: ./autopilot
+        run: uv sync
+
+      - name: Check telemetry data
+        working-directory: ./autopilot
+        run: |
+          echo "Checking for telemetry data..."
+          if [ -d "../server/telemetry" ]; then
+            file_count=$(ls -1 ../server/telemetry/*.json 2>/dev/null | wc -l)
+            echo "Found $file_count telemetry files"
+            if [ "$file_count" -eq 0 ]; then
+              echo "Warning: No telemetry data found. Training may fail."
+            fi
+          else
+            echo "Warning: Telemetry directory not found"
+          fi
+
+      - name: Train model - ${{ matrix.name }}
+        working-directory: ./autopilot
+        run: |
+          echo "=========================================="
+          echo "Training Configuration: ${{ matrix.name }}"
+          echo "Description: ${{ matrix.description }}"
+          echo "=========================================="
+          echo "Learning Rate: ${{ matrix.learning_rate }}"
+          echo "Batch Size: ${{ matrix.batch_size }}"
+          echo "Hidden Sizes: ${{ matrix.hidden_sizes }}"
+          echo "=========================================="
+          echo ""
+
+          uv run python -m autopilot.train \
+            --telemetry-dir ../server/telemetry \
+            --output-dir ./models/${{ matrix.name }} \
+            --epochs 50 \
+            --batch-size ${{ matrix.batch_size }} \
+            --learning-rate ${{ matrix.learning_rate }} \
+            --hidden-sizes '${{ matrix.hidden_sizes }}' \
+            --device cpu
+
+      - name: Print training summary - ${{ matrix.name }}
+        if: always()
+        working-directory: ./autopilot
+        run: |
+          echo ""
+          echo "=========================================="
+          echo "TRAINING SUMMARY: ${{ matrix.name }}"
+          echo "=========================================="
+          echo "Configuration:"
+          echo "  - Learning Rate: ${{ matrix.learning_rate }}"
+          echo "  - Batch Size: ${{ matrix.batch_size }}"
+          echo "  - Hidden Sizes: ${{ matrix.hidden_sizes }}"
+          echo ""
+
+          if [ -f "./models/${{ matrix.name }}/best_model.pt" ]; then
+            echo "✓ Training completed successfully"
+            echo "✓ Best model saved to: models/${{ matrix.name }}/best_model.pt"
+
+            # Show model file size
+            model_size=$(ls -lh "./models/${{ matrix.name }}/best_model.pt" | awk '{print $5}')
+            echo "✓ Model size: $model_size"
+          else
+            echo "✗ Training failed - no model checkpoint found"
+          fi
+
+          echo "=========================================="
+
+      - name: Upload trained model
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-${{ matrix.name }}
+          path: autopilot/models/${{ matrix.name }}/
+          retention-days: 30
+
+      - name: Upload training logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-${{ matrix.name }}
+          path: autopilot/models/${{ matrix.name }}/*.log
+          retention-days: 30
+          if-no-files-found: ignore

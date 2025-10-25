@@ -3,6 +3,7 @@
 import argparse
 from pathlib import Path
 
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -11,6 +12,7 @@ from tqdm import tqdm
 from autopilot.data_loader import load_telemetry_data, normalize_features
 from autopilot.dataset import create_train_val_split
 from autopilot.model import create_model, save_model
+from autopilot.augmentation import augment_dataset
 
 
 def calculate_accuracy(predictions: torch.Tensor, labels: torch.Tensor, threshold: float = 0.5) -> dict:
@@ -18,15 +20,16 @@ def calculate_accuracy(predictions: torch.Tensor, labels: torch.Tensor, threshol
     Calculate per-key accuracy metrics.
 
     Args:
-        predictions: Model predictions (batch_size, 4)
+        predictions: Model predictions as logits (batch_size, 4)
         labels: Ground truth labels (batch_size, 4)
         threshold: Threshold for binary classification
 
     Returns:
         Dictionary with accuracy for each key and overall accuracy
     """
-    # Convert probabilities to binary predictions
-    pred_binary = (predictions >= threshold).float()
+    # Convert logits to probabilities, then to binary predictions
+    probabilities = torch.sigmoid(predictions)
+    pred_binary = (probabilities >= threshold).float()
 
     # Calculate per-key accuracy
     correct = (pred_binary == labels).float()
@@ -146,7 +149,9 @@ def train(
     batch_size: int = 32,
     learning_rate: float = 0.001,
     val_split: float = 0.2,
-    device: str = None
+    device: str = None,
+    use_augmentation: bool = True,
+    hidden_sizes: list = None
 ):
     """
     Main training function.
@@ -179,6 +184,32 @@ def train(
     print("\n=== Loading Data ===")
     features, labels = load_telemetry_data(telemetry_dir)
 
+    # Apply data augmentation
+    if use_augmentation:
+        print("\n=== Augmenting Data ===")
+        features, labels = augment_dataset(features, labels, mirror=True, add_noise=True)
+
+    # Calculate class weights to handle imbalanced data
+    print("\n=== Calculating Class Weights ===")
+    label_sums = labels.sum(axis=0)
+    total_samples = len(labels)
+
+    # Use sqrt formula for more moderate weighting: sqrt(total / count)
+    # This prevents extreme penalties while still balancing classes
+    # Cap maximum weight at 10.0 to prevent overwhelming the loss
+    MAX_WEIGHT = 10.0
+    pos_weights = torch.tensor([
+        min(MAX_WEIGHT, np.sqrt(total_samples / (label_sums[i] + 1.0)))  # Add 1.0 to handle zero counts
+        for i in range(4)
+    ], dtype=torch.float32).to(device if device else 'cpu')
+
+    print(f"Class distribution: W={label_sums[0]:.0f} ({label_sums[0]/total_samples*100:.1f}%), "
+          f"A={label_sums[1]:.0f} ({label_sums[1]/total_samples*100:.1f}%), "
+          f"S={label_sums[2]:.0f} ({label_sums[2]/total_samples*100:.1f}%), "
+          f"D={label_sums[3]:.0f} ({label_sums[3]/total_samples*100:.1f}%)")
+    print(f"Positive class weights: W={pos_weights[0]:.2f}, A={pos_weights[1]:.2f}, "
+          f"S={pos_weights[2]:.2f}, D={pos_weights[3]:.2f}")
+
     # Normalize features
     print("\n=== Normalizing Features ===")
     features_normalized, norm_params = normalize_features(features)
@@ -195,11 +226,13 @@ def train(
 
     # Create model
     print("\n=== Creating Model ===")
-    model = create_model()
+    model = create_model(hidden_sizes=hidden_sizes)
     model.to(device)
 
     # Loss and optimizer
-    criterion = nn.BCELoss()  # Binary Cross Entropy for multi-label classification
+    # Use BCEWithLogitsLoss with pos_weight for handling class imbalance
+    # This combines sigmoid + BCE for numerical stability and uses class weights
+    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weights)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
     # Training loop
@@ -287,8 +320,32 @@ def main():
         default=None,
         help="Device to train on (auto-detect if not specified)"
     )
+    parser.add_argument(
+        "--no-augmentation",
+        action="store_true",
+        help="Disable data augmentation"
+    )
+    parser.add_argument(
+        "--hidden-sizes",
+        type=str,
+        default=None,
+        help="Hidden layer sizes as JSON array (e.g., '[128, 64, 32]')"
+    )
 
     args = parser.parse_args()
+
+    # Parse hidden sizes if provided
+    hidden_sizes = None
+    if args.hidden_sizes:
+        import json
+        try:
+            hidden_sizes = json.loads(args.hidden_sizes)
+            if not isinstance(hidden_sizes, list) or not all(isinstance(x, int) for x in hidden_sizes):
+                raise ValueError("Hidden sizes must be a list of integers")
+        except (json.JSONDecodeError, ValueError) as e:
+            print(f"Error parsing hidden-sizes: {e}")
+            print("Expected format: '[128, 64, 32]'")
+            return
 
     train(
         telemetry_dir=args.telemetry_dir,
@@ -297,7 +354,9 @@ def main():
         batch_size=args.batch_size,
         learning_rate=args.learning_rate,
         val_split=args.val_split,
-        device=args.device
+        device=args.device,
+        use_augmentation=not args.no_augmentation,
+        hidden_sizes=hidden_sizes
     )
 
 

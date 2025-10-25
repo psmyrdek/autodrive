@@ -9,10 +9,10 @@ class AutopilotNet(nn.Module):
     Feedforward neural network for autopilot control.
 
     Architecture:
-        Input (4) → FC(64) → ReLU → FC(32) → ReLU → FC(4) → Sigmoid
+        Input (4) → FC(128) → ReLU → Dropout(0.1) → FC(64) → ReLU → Dropout(0.1) → FC(32) → ReLU → FC(4)
 
     Input features: [l_sensor_range, c_sensor_range, r_sensor_range, speed]
-    Output: [w_prob, a_prob, s_prob, d_prob] - probabilities for each key press
+    Output: [w_logit, a_logit, s_logit, d_logit] - logits for each key press (apply sigmoid for probabilities)
     """
 
     def __init__(self, input_size: int = 4, hidden_sizes: list = None, output_size: int = 4):
@@ -21,29 +21,31 @@ class AutopilotNet(nn.Module):
 
         Args:
             input_size: Number of input features (default: 4)
-            hidden_sizes: List of hidden layer sizes (default: [64, 32])
+            hidden_sizes: List of hidden layer sizes (default: [128, 64, 32])
             output_size: Number of output classes (default: 4 for WASD)
         """
         super().__init__()
 
         if hidden_sizes is None:
-            hidden_sizes = [64, 32]
+            hidden_sizes = [128, 64, 32]  # Increased capacity from [64, 32]
 
         layers = []
 
         # Input layer
         prev_size = input_size
-        for hidden_size in hidden_sizes:
+        for i, hidden_size in enumerate(hidden_sizes):
             layers.extend([
                 nn.Linear(prev_size, hidden_size),
                 nn.ReLU(),
-                nn.Dropout(0.2)  # Prevent overfitting
             ])
+            # Only add dropout to deeper layers if we have enough data
+            # With limited data, dropout can hurt performance
+            if i < len(hidden_sizes) - 1:  # Skip dropout on last hidden layer
+                layers.append(nn.Dropout(0.1))  # Reduced from 0.2
             prev_size = hidden_size
 
-        # Output layer with sigmoid activation
+        # Output layer (no activation - outputs logits for BCEWithLogitsLoss)
         layers.append(nn.Linear(prev_size, output_size))
-        layers.append(nn.Sigmoid())
 
         self.network = nn.Sequential(*layers)
 
@@ -55,7 +57,7 @@ class AutopilotNet(nn.Module):
             x: Input tensor of shape (batch_size, input_size)
 
         Returns:
-            Output tensor of shape (batch_size, output_size) with probabilities
+            Output tensor of shape (batch_size, output_size) with logits (not probabilities)
         """
         return self.network(x)
 
@@ -70,7 +72,8 @@ class AutopilotNet(nn.Module):
         Returns:
             Binary tensor of shape (batch_size, output_size) with 0/1 values
         """
-        probabilities = self.forward(x)
+        logits = self.forward(x)
+        probabilities = torch.sigmoid(logits)
         return (probabilities >= threshold).float()
 
 

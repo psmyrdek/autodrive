@@ -101,9 +101,10 @@ class AutopilotInference:
         # Convert to tensor
         features_tensor = torch.tensor(features_normalized, dtype=torch.float32).to(self.device)
 
-        # Predict
+        # Predict (model outputs logits, need to apply sigmoid)
         with torch.no_grad():
-            probabilities = self.model(features_tensor)
+            logits = self.model(features_tensor)
+            probabilities = torch.sigmoid(logits)
 
         # Convert to numpy
         probs = probabilities.cpu().numpy()[0]
@@ -147,9 +148,10 @@ class AutopilotInference:
         # Convert to tensor
         features_tensor = torch.tensor(features_normalized, dtype=torch.float32).to(self.device)
 
-        # Predict
+        # Predict (model outputs logits, need to apply sigmoid)
         with torch.no_grad():
-            probabilities = self.model(features_tensor)
+            logits = self.model(features_tensor)
+            probabilities = torch.sigmoid(logits)
 
         # Convert to numpy
         probs = probabilities.cpu().numpy()
