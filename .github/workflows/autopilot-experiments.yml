@@ -20,18 +20,6 @@ jobs:
             hidden_sizes: "[128, 64, 32, 16]"
             description: "Deeper network with 4 hidden layers (current best)"
 
-          - name: deeper-network-lr-0.0002
-            learning_rate: 0.002
-            batch_size: 64
-            hidden_sizes: "[128, 64, 32, 16]"
-            description: "Deeper network with 4 hidden layers and higher learning rate"
-
-          - name: deeper-network-plus2
-            learning_rate: 0.001
-            batch_size: 32
-            hidden_sizes: "[128, 64, 32, 16, 8, 4]"
-            description: "Very deep network with 6 hidden layers (+2 layers)"
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -86,46 +74,10 @@ jobs:
             --hidden-sizes '${{ matrix.hidden_sizes }}' \
             --device cpu
 
-      - name: Print training summary - ${{ matrix.name }}
-        if: always()
-        working-directory: ./autopilot
-        run: |
-          echo ""
-          echo "=========================================="
-          echo "TRAINING SUMMARY: ${{ matrix.name }}"
-          echo "=========================================="
-          echo "Configuration:"
-          echo "  - Learning Rate: ${{ matrix.learning_rate }}"
-          echo "  - Batch Size: ${{ matrix.batch_size }}"
-          echo "  - Hidden Sizes: ${{ matrix.hidden_sizes }}"
-          echo ""
-
-          if [ -f "./models/${{ matrix.name }}/best_model.pt" ]; then
-            echo "✓ Training completed successfully"
-            echo "✓ Best model saved to: models/${{ matrix.name }}/best_model.pt"
-
-            # Show model file size
-            model_size=$(ls -lh "./models/${{ matrix.name }}/best_model.pt" | awk '{print $5}')
-            echo "✓ Model size: $model_size"
-          else
-            echo "✗ Training failed - no model checkpoint found"
-          fi
-
-          echo "=========================================="
-
       - name: Upload trained model
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: model-${{ matrix.name }}
           path: autopilot/models/${{ matrix.name }}/
-          retention-days: 30
-
-      - name: Upload training logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs-${{ matrix.name }}
-          path: autopilot/models/${{ matrix.name }}/*.log
-          retention-days: 30
-          if-no-files-found: ignore
+          retention-days: 3
