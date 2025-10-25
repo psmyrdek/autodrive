@@ -17,11 +17,6 @@ env/
 # uv
 .uv/
 
-# Model checkpoints (exclude .pt files but keep .gitkeep)
-models/*.pt
-models/*.pth
-models/*.onnx
-
 # Data files
 data/*.json
 

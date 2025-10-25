@@ -28,7 +28,7 @@ export class AutopilotSystem {
 
   // ML mode configuration
   private readonly ML_API_URL = "http://localhost:8000/predict";
-  private readonly NETWORK_SAFETY_MARGIN = 20; // Subtract from sensor values to compensate for network delay
+  private readonly NETWORK_SAFETY_MARGIN = 30; // Subtract from sensor values to compensate for network delay
   private useMlMode: boolean;
   private mlAvailable: boolean = false;
 
