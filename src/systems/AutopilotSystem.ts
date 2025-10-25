@@ -53,7 +53,7 @@ export class AutopilotSystem {
         this.mlAvailable = true;
         console.log("ML autopilot API is available");
       }
-    } catch (error) {
+    } catch {
       console.warn("ML autopilot API is not available, falling back to rule-based logic");
       this.mlAvailable = false;
     }

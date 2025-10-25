@@ -4,6 +4,90 @@ import {interpolateDensePoints} from "../utils/curveInterpolation";
 
 type DrawingTool = "outer-border" | "inner-border" | "start-point";
 
+const drawSmoothCurve = (
+  ctx: CanvasRenderingContext2D,
+  points: Point[],
+  closed: boolean
+) => {
+  if (points.length < 3) return;
+
+  const tension = 0.5;
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i === 0 ? (closed ? points.length - 1 : 0) : i - 1];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 =
+      points[
+        i + 2 >= points.length
+          ? closed
+            ? (i + 2) % points.length
+            : points.length - 1
+          : i + 2
+      ];
+
+    const cp1x = p1.x + ((p2.x - p0.x) / 6) * tension;
+    const cp1y = p1.y + ((p2.y - p0.y) / 6) * tension;
+    const cp2x = p2.x - ((p3.x - p1.x) / 6) * tension;
+    const cp2y = p2.y - ((p3.y - p1.y) / 6) * tension;
+
+    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+  }
+
+  if (closed) {
+    // Close the path
+    const p0 = points[points.length - 2];
+    const p1 = points[points.length - 1];
+    const p2 = points[0];
+    const p3 = points[1];
+
+    const cp1x = p1.x + ((p2.x - p0.x) / 6) * tension;
+    const cp1y = p1.y + ((p2.y - p0.y) / 6) * tension;
+    const cp2x = p2.x - ((p3.x - p1.x) / 6) * tension;
+    const cp2y = p2.y - ((p3.y - p1.y) / 6) * tension;
+
+    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+  }
+};
+
+const drawPath = (
+  ctx: CanvasRenderingContext2D,
+  points: Point[],
+  color: string,
+  isComplete: boolean
+) => {
+  if (points.length === 0) return;
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.fillStyle = color;
+
+  // Draw points
+  points.forEach((point) => {
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Draw lines/curves
+  if (points.length > 1) {
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+
+    if (isComplete && points.length > 2) {
+      // Draw smooth cubic bezier curves
+      drawSmoothCurve(ctx, points, true);
+    } else {
+      // Draw straight lines for incomplete paths
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+    }
+
+    ctx.stroke();
+  }
+};
+
 export default function TrackBuilder() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentTool, setCurrentTool] = useState<DrawingTool>("outer-border");
@@ -52,90 +136,6 @@ export default function TrackBuilder() {
       ctx.fill();
     }
   }, [outerBorder, innerBorder, startPoint, isOuterComplete, isInnerComplete]);
-
-  const drawPath = (
-    ctx: CanvasRenderingContext2D,
-    points: Point[],
-    color: string,
-    isComplete: boolean
-  ) => {
-    if (points.length === 0) return;
-
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 3;
-    ctx.fillStyle = color;
-
-    // Draw points
-    points.forEach((point) => {
-      ctx.beginPath();
-      ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    // Draw lines/curves
-    if (points.length > 1) {
-      ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
-
-      if (isComplete && points.length > 2) {
-        // Draw smooth cubic bezier curves
-        drawSmoothCurve(ctx, points, true);
-      } else {
-        // Draw straight lines for incomplete paths
-        for (let i = 1; i < points.length; i++) {
-          ctx.lineTo(points[i].x, points[i].y);
-        }
-      }
-
-      ctx.stroke();
-    }
-  };
-
-  const drawSmoothCurve = (
-    ctx: CanvasRenderingContext2D,
-    points: Point[],
-    closed: boolean
-  ) => {
-    if (points.length < 3) return;
-
-    const tension = 0.5;
-
-    for (let i = 0; i < points.length - 1; i++) {
-      const p0 = points[i === 0 ? (closed ? points.length - 1 : 0) : i - 1];
-      const p1 = points[i];
-      const p2 = points[i + 1];
-      const p3 =
-        points[
-          i + 2 >= points.length
-            ? closed
-              ? (i + 2) % points.length
-              : points.length - 1
-            : i + 2
-        ];
-
-      const cp1x = p1.x + ((p2.x - p0.x) / 6) * tension;
-      const cp1y = p1.y + ((p2.y - p0.y) / 6) * tension;
-      const cp2x = p2.x - ((p3.x - p1.x) / 6) * tension;
-      const cp2y = p2.y - ((p3.y - p1.y) / 6) * tension;
-
-      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
-    }
-
-    if (closed) {
-      // Close the path
-      const p0 = points[points.length - 2];
-      const p1 = points[points.length - 1];
-      const p2 = points[0];
-      const p3 = points[1];
-
-      const cp1x = p1.x + ((p2.x - p0.x) / 6) * tension;
-      const cp1y = p1.y + ((p2.y - p0.y) / 6) * tension;
-      const cp2x = p2.x - ((p3.x - p1.x) / 6) * tension;
-      const cp2y = p2.y - ((p3.y - p1.y) / 6) * tension;
-
-      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
-    }
-  };
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;

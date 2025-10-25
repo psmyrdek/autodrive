@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Track } from '../types/track';
 
 interface TrackSwitcherProps {
@@ -11,11 +11,7 @@ export default function TrackSwitcher({ onTrackChange, currentTrack }: TrackSwit
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchTracks();
-  }, []);
-
-  const fetchTracks = async () => {
+  const fetchTracks = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -36,7 +32,11 @@ export default function TrackSwitcher({ onTrackChange, currentTrack }: TrackSwit
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentTrack, onTrackChange]);
+
+  useEffect(() => {
+    fetchTracks();
+  }, [fetchTracks]);
 
   if (loading) {
     return (
