@@ -112,10 +112,22 @@ def save_model(model: AutopilotNet, path: str, normalization_params: dict = None
         path: Path to save the model
         normalization_params: Optional normalization parameters to save with model
     """
+    # Extract hidden sizes from the model architecture
+    hidden_sizes = []
+    for module in model.network:
+        if isinstance(module, nn.Linear):
+            # All Linear layers except the last one are hidden layers
+            hidden_sizes.append(module.out_features)
+
+    # Remove the last layer (output layer)
+    if hidden_sizes:
+        hidden_sizes = hidden_sizes[:-1]
+
     checkpoint = {
         'model_state_dict': model.state_dict(),
         'model_config': {
             'input_size': 4,
+            'hidden_sizes': hidden_sizes if hidden_sizes else [128, 64, 32],
             'output_size': 4
         }
     }
@@ -142,6 +154,7 @@ def load_model(path: str, device: str = 'cpu') -> tuple:
 
     model = create_model(
         input_size=checkpoint['model_config']['input_size'],
+        hidden_sizes=checkpoint['model_config'].get('hidden_sizes', None),
         output_size=checkpoint['model_config']['output_size']
     )
     model.load_state_dict(checkpoint['model_state_dict'])
