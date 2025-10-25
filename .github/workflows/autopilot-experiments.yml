@@ -20,11 +20,11 @@ jobs:
             hidden_sizes: "[128, 64, 32, 16]"
             description: "Deeper network with 4 hidden layers (current best)"
 
-          - name: deeper-network-plus1
-            learning_rate: 0.001
-            batch_size: 32
-            hidden_sizes: "[128, 64, 32, 16, 8]"
-            description: "Even deeper network with 5 hidden layers (+1 layer)"
+          - name: deeper-network-lr-0.0002
+            learning_rate: 0.002
+            batch_size: 64
+            hidden_sizes: "[128, 64, 32, 16]"
+            description: "Deeper network with 4 hidden layers and higher learning rate"
 
           - name: deeper-network-plus2
             learning_rate: 0.001
