@@ -2,11 +2,18 @@ import type {RadarDistances} from "./RadarSystem";
 import type {InputManager} from "./InputManager";
 
 export interface TelemetryData {
-  timestamp: number;
+  t_step: number; // Step counter (0, 1, 2, ...) at 20 Hz (50ms intervals)
+  // Continuous state (key held down)
   w_pressed: boolean;
   a_pressed: boolean;
   s_pressed: boolean;
   d_pressed: boolean;
+  // Impulses (1 only when key transitions from 0→1, otherwise 0)
+  w_impulse: boolean;
+  a_impulse: boolean;
+  s_impulse: boolean;
+  d_impulse: boolean;
+  // Sensors and speed (floats, no rounding)
   l_sensor_range: number;
   ml_sensor_range: number;
   c_sensor_range: number;
@@ -16,80 +23,74 @@ export interface TelemetryData {
 }
 
 export class TelemetryTracker {
-  private readonly TELEMETRY_SAMPLE_INTERVAL = 50; // Increased from 100ms to 50ms (20Hz)
+  private readonly SAMPLE_INTERVAL_MS = 50;
 
   private telemetryData: TelemetryData[] = [];
-  private lastTelemetrySample: number = 0;
+  private timeAccumulator: number = 0; // Accumulates frame time deltas
+  private stepCounter: number = 0; // Counts samples at fixed 50ms intervals
 
-  sample(
-    elapsedTime: number,
-    inputManager: InputManager,
-    radarDistances: RadarDistances,
-    speed: number
-  ) {
-    const currentTime = Date.now();
-
-    // Check if enough time has passed since last sample
-    if (
-      currentTime - this.lastTelemetrySample >=
-      this.TELEMETRY_SAMPLE_INTERVAL
-    ) {
-      this.telemetryData.push({
-        timestamp: elapsedTime,
-        w_pressed: inputManager.isKeyDown("W"),
-        a_pressed: inputManager.isKeyDown("A"),
-        s_pressed: inputManager.isKeyDown("S"),
-        d_pressed: inputManager.isKeyDown("D"),
-        l_sensor_range: Math.round(radarDistances.left),
-        ml_sensor_range: Math.round(radarDistances.midLeft),
-        c_sensor_range: Math.round(radarDistances.center),
-        mr_sensor_range: Math.round(radarDistances.midRight),
-        r_sensor_range: Math.round(radarDistances.right),
-        speed: Math.round(speed),
-      });
-
-      this.lastTelemetrySample = currentTime;
-    }
-  }
+  // Previous key states for edge detection (0→1 transitions)
+  private prevKeyStates = {
+    w: false,
+    a: false,
+    s: false,
+    d: false,
+  };
 
   /**
-   * Record immediate telemetry entry when a key is pressed
-   * This ensures we capture quick key presses that might be missed by periodic sampling
-   * Adds multiple simulated entries for braking (10 entries) and turning (3 entries)
+   * Sample telemetry at fixed 20 Hz (50ms) intervals using accumulator pattern.
+   * Handles irregular frame times by accumulating delta and emitting samples at exact intervals.
+   * @param deltaTime - Time elapsed since last frame (in milliseconds)
    */
-  recordKeyPress(
-    elapsedTime: number,
+  sample(
+    deltaTime: number,
     inputManager: InputManager,
     radarDistances: RadarDistances,
     speed: number
   ) {
-    const isBreaking = inputManager.isKeyDown("S");
-    const isTurningLeft = inputManager.isKeyDown("A");
-    const isTurningRight = inputManager.isKeyDown("D");
+    this.timeAccumulator += deltaTime;
 
-    // Determine number of entries to add
-    let entriesToAdd = 1;
-    if (isBreaking) {
-      entriesToAdd = 10;
-    } else if (isTurningLeft || isTurningRight) {
-      entriesToAdd = 3;
-    }
+    // Emit samples at fixed 50ms intervals, regardless of irregular frame timing
+    while (this.timeAccumulator >= this.SAMPLE_INTERVAL_MS) {
+      this.timeAccumulator -= this.SAMPLE_INTERVAL_MS;
 
-    // Add multiple entries with slightly offset timestamps
-    for (let i = 0; i < entriesToAdd; i++) {
+      // Current key states
+      const wPressed = inputManager.isKeyDown("W");
+      const aPressed = inputManager.isKeyDown("A");
+      const sPressed = inputManager.isKeyDown("S");
+      const dPressed = inputManager.isKeyDown("D");
+
+      // Detect edges (0→1 transitions) for impulses
+      const wImpulse = wPressed && !this.prevKeyStates.w;
+      const aImpulse = aPressed && !this.prevKeyStates.a;
+      const sImpulse = sPressed && !this.prevKeyStates.s;
+      const dImpulse = dPressed && !this.prevKeyStates.d;
+
       this.telemetryData.push({
-        timestamp: elapsedTime + i,
-        w_pressed: inputManager.isKeyDown("W"),
-        a_pressed: inputManager.isKeyDown("A"),
-        s_pressed: inputManager.isKeyDown("S"),
-        d_pressed: inputManager.isKeyDown("D"),
-        l_sensor_range: Math.round(radarDistances.left),
-        ml_sensor_range: Math.round(radarDistances.midLeft),
-        c_sensor_range: Math.round(radarDistances.center),
-        mr_sensor_range: Math.round(radarDistances.midRight),
-        r_sensor_range: Math.round(radarDistances.right),
-        speed: Math.round(speed),
+        t_step: this.stepCounter,
+        w_pressed: wPressed,
+        a_pressed: aPressed,
+        s_pressed: sPressed,
+        d_pressed: dPressed,
+        w_impulse: wImpulse,
+        a_impulse: aImpulse,
+        s_impulse: sImpulse,
+        d_impulse: dImpulse,
+        l_sensor_range: radarDistances.left,
+        ml_sensor_range: radarDistances.midLeft,
+        c_sensor_range: radarDistances.center,
+        mr_sensor_range: radarDistances.midRight,
+        r_sensor_range: radarDistances.right,
+        speed: speed,
       });
+
+      // Update previous states for next edge detection
+      this.prevKeyStates.w = wPressed;
+      this.prevKeyStates.a = aPressed;
+      this.prevKeyStates.s = sPressed;
+      this.prevKeyStates.d = dPressed;
+
+      this.stepCounter++;
     }
   }
 
@@ -99,6 +100,13 @@ export class TelemetryTracker {
 
   clear() {
     this.telemetryData = [];
-    this.lastTelemetrySample = 0;
+    this.timeAccumulator = 0;
+    this.stepCounter = 0;
+    this.prevKeyStates = {
+      w: false,
+      a: false,
+      s: false,
+      d: false,
+    };
   }
 }

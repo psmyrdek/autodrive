@@ -40,7 +40,7 @@ export default class GameScene extends Phaser.Scene {
     this.radarSystem = new RadarSystem(this);
     this.telemetryTracker = new TelemetryTracker();
     this.timerDisplay = new TimerDisplay(this);
-    this.autopilotSystem = new AutopilotSystem(true); // Enable ML mode by default
+    this.autopilotSystem = new AutopilotSystem();
 
     // Initialize graphics and track
     this.graphics = this.add.graphics();
@@ -65,27 +65,6 @@ export default class GameScene extends Phaser.Scene {
       this.toggleAutopilot();
     });
 
-    // Set up key press listeners for WSAD to capture immediate telemetry entries
-    const wKey = this.input.keyboard?.addKey("W");
-    const aKey = this.input.keyboard?.addKey("A");
-    const sKey = this.input.keyboard?.addKey("S");
-    const dKey = this.input.keyboard?.addKey("D");
-
-    const recordKeyPressEvent = () => {
-      if (this.hasStarted && this.isRunning) {
-        this.telemetryTracker.recordKeyPress(
-          this.timerDisplay.getElapsedTime(),
-          this.inputManager,
-          this.radarSystem.distances,
-          this.carPhysics.getSpeed()
-        );
-      }
-    };
-
-    wKey?.on("down", recordKeyPressEvent);
-    aKey?.on("down", recordKeyPressEvent);
-    sKey?.on("down", recordKeyPressEvent);
-    dKey?.on("down", recordKeyPressEvent);
   }
 
   private renderTrack() {
@@ -147,6 +126,7 @@ export default class GameScene extends Phaser.Scene {
     // Reset game state (timer will start on first input)
     this.isRunning = true;
     this.hasStarted = false;
+    this.autopilotSystem.resetBuffer(); // Reset ML model's observation buffer
   }
 
   private createCar() {
@@ -197,9 +177,9 @@ export default class GameScene extends Phaser.Scene {
       if (this.hasStarted) {
         this.timerDisplay.update(this.isRunning);
 
-        // Sample telemetry data
+        // Sample telemetry data at fixed 20 Hz using delta time
         this.telemetryTracker.sample(
-          this.timerDisplay.getElapsedTime(),
+          delta,
           this.inputManager,
           this.radarSystem.distances,
           this.carPhysics.getSpeed()
@@ -248,6 +228,7 @@ export default class GameScene extends Phaser.Scene {
     this.hasStarted = false;
     this.resetCarPosition();
     this.telemetryTracker.clear();
+    this.autopilotSystem.resetBuffer(); // Reset ML model's observation buffer
   }
 
   /**

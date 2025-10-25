@@ -14,30 +14,78 @@ export interface CarState {
   speed: number;
 }
 
+interface Observation {
+  l: number;
+  ml: number;
+  c: number;
+  mr: number;
+  r: number;
+  speed: number;
+}
+
+interface PreviousCommands {
+  forward: boolean;
+  backward: boolean;
+  left: boolean;
+  right: boolean;
+  timestamp: number;
+}
+
 /**
  * Autopilot system that decides steering commands based on car state.
- * Supports both ML-based (neural network) and rule-based control modes.
+ * Uses ML-based (neural network) control exclusively.
+ * Maintains a ring-buffer of observations for GRU temporal processing.
  */
 export class AutopilotSystem {
-  // Thresholds for decision-making (used in rule-based mode)
-  private readonly STEERING_THRESHOLD = 50; // Minimum distance difference to trigger steering
-  private readonly OBSTACLE_WARNING_DISTANCE = 300; // Distance to start slowing down
-  private readonly OBSTACLE_DANGER_DISTANCE = 150; // Distance to brake hard
-  private readonly MIN_SPEED_FOR_TURNING = 20; // Minimum speed to allow turning
-  private readonly TARGET_SPEED = 200; // Target cruising speed
-
-  // ML mode configuration
+  // ML API configuration
   private readonly ML_API_URL = "http://localhost:8000/predict";
-  private readonly NETWORK_SAFETY_MARGIN = 30; // Subtract from sensor values to compensate for network delay
-  private useMlMode: boolean;
+  private readonly ML_RESET_URL = "http://localhost:8000/reset";
   private mlAvailable: boolean = false;
 
-  constructor(useMlMode: boolean = false) {
-    this.useMlMode = useMlMode;
+  // Ring-buffer for temporal sequences
+  private readonly SEQUENCE_LENGTH = 10; // T = 10 timesteps (500ms history at 50ms intervals)
+  private readonly DT_MS = 50; // Expected time between observations
+  private observationBuffer: Observation[] = [];
 
+  // Timeout budget for ML inference
+  private readonly TIMEOUT_MS = 25; // Max time to wait for ML response
+
+  // Hysteresis to prevent flickering
+  private previousCommands: PreviousCommands | null = null;
+  private readonly HYSTERESIS_TIME_MS = 0; // Disabled: Let model corrections execute immediately (was 100ms)
+
+  // Track last predicted actions for temporal consistency (used as input to next prediction)
+  private lastPredictedActions: [number, number, number, number] = [0, 0, 0, 0]; // [w, a, s, d]
+
+  constructor() {
     // Check if ML API is available on startup
-    if (useMlMode) {
-      this.checkMlAvailability();
+    this.checkMlAvailability();
+  }
+
+  /**
+   * Reset the observation buffer and previous commands.
+   * Call this when starting a new driving session.
+   */
+  async resetBuffer(): Promise<void> {
+    this.observationBuffer = [];
+    this.previousCommands = null;
+    this.lastPredictedActions = [0, 0, 0, 0]; // Reset previous actions
+
+    if (!this.mlAvailable) {
+      return;
+    }
+
+    try {
+      const response = await fetch(this.ML_RESET_URL, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+      });
+
+      if (response.ok) {
+        console.log("ML autopilot buffer reset");
+      }
+    } catch (error) {
+      console.warn("Failed to reset ML autopilot buffer:", error);
     }
   }
 
@@ -53,154 +101,98 @@ export class AutopilotSystem {
       if (response.ok) {
         this.mlAvailable = true;
         console.log("ML autopilot API is available");
+      } else {
+        throw new Error(`ML API health check failed: ${response.status}`);
       }
-    } catch {
-      console.warn(
-        "ML autopilot API is not available, falling back to rule-based logic"
-      );
+    } catch (error) {
+      console.error("ML autopilot API is not available:", error);
       this.mlAvailable = false;
     }
   }
 
   /**
-   * Toggle between ML and rule-based mode.
-   */
-  setMlMode(enabled: boolean): void {
-    this.useMlMode = enabled;
-    if (enabled && !this.mlAvailable) {
-      this.checkMlAvailability();
-    }
-  }
-
-  /**
-   * Get current autopilot mode.
-   */
-  isMlMode(): boolean {
-    return this.useMlMode && this.mlAvailable;
-  }
-
-  /**
    * Main entry point: takes current car state and returns control commands.
-   * Uses neural network if ML mode is enabled and available, otherwise falls back to rule-based logic.
+   * Uses neural network with sequence buffer, timeout, safety envelope, and hysteresis.
    */
   async getControlCommands(state: CarState): Promise<ControlCommands> {
-    if (this.useMlMode && this.mlAvailable) {
-      try {
-        return await this.mlLogic(state);
-      } catch (error) {
-        console.error(
-          "ML inference failed, falling back to rule-based logic:",
-          error
-        );
-        this.mlAvailable = false; // Disable ML mode if it fails
-        return this.mockLogic(state);
-      }
-    }
-    return this.mockLogic(state);
-  }
+    // Add current observation to buffer
+    const observation: Observation = {
+      l: state.sensors.left,
+      ml: state.sensors.midLeft,
+      c: state.sensors.center,
+      mr: state.sensors.midRight,
+      r: state.sensors.right,
+      speed: state.speed,
+    };
 
-  /**
-   * Simple rule-based logic for autopilot.
-   * Strategy:
-   * - Steering: Turn away from closer walls (sensor-based centering using all 5 sensors)
-   * - Speed: Accelerate to target speed, slow down when obstacles ahead
-   * - Safety: Brake hard if very close to obstacle
-   */
-  private mockLogic(state: CarState): ControlCommands {
-    const {sensors, speed} = state;
-    const commands: ControlCommands = {
-      forward: false,
+    this.observationBuffer.push(observation);
+
+    // Maintain buffer size (ring-buffer behavior)
+    if (this.observationBuffer.length > this.SEQUENCE_LENGTH) {
+      this.observationBuffer.shift();
+    }
+
+    // Try ML inference with timeout and fallback
+    let commands: ControlCommands = {
+      forward: true,
       backward: false,
       left: false,
       right: false,
     };
 
-    // === Speed Control ===
-    // Use all 5 sensors to detect minimum distance
-    const minDistance = Math.min(
-      sensors.left,
-      sensors.midLeft,
-      sensors.center,
-      sensors.midRight,
-      sensors.right
-    );
-
-    // Brake hard if danger ahead
-    if (minDistance < this.OBSTACLE_DANGER_DISTANCE) {
-      commands.backward = true; // Use backward as brake
-    }
-    // Accelerate if safe and below target speed
-    else if (
-      sensors.center > this.OBSTACLE_WARNING_DISTANCE &&
-      speed < this.TARGET_SPEED
+    if (
+      this.mlAvailable &&
+      this.observationBuffer.length >= this.SEQUENCE_LENGTH
     ) {
-      commands.forward = true;
-    }
-    // Coast (no acceleration) if at good speed
-    else if (speed < this.TARGET_SPEED * 0.8) {
-      commands.forward = true; // Keep some acceleration
-    }
-
-    // === Steering Control ===
-    // Only steer if moving fast enough
-    if (speed > this.MIN_SPEED_FOR_TURNING) {
-      // Calculate weighted average of left and right sensors (mid sensors have more weight)
-      const leftSide = (sensors.left + sensors.midLeft * 2) / 3;
-      const rightSide = (sensors.right + sensors.midRight * 2) / 3;
-      const leftRightDiff = leftSide - rightSide;
-
-      // If left side is more open than right, turn left
-      if (leftRightDiff > this.STEERING_THRESHOLD) {
-        commands.left = true;
-      }
-      // If right side is more open than left, turn right
-      else if (leftRightDiff < -this.STEERING_THRESHOLD) {
-        commands.right = true;
-      }
-
-      // Emergency steering: if any sensor on one side is very close, turn away aggressively
-      if (
-        sensors.left < this.OBSTACLE_DANGER_DISTANCE ||
-        sensors.midLeft < this.OBSTACLE_DANGER_DISTANCE
-      ) {
-        commands.left = false;
-        commands.right = true;
-      } else if (
-        sensors.right < this.OBSTACLE_DANGER_DISTANCE ||
-        sensors.midRight < this.OBSTACLE_DANGER_DISTANCE
-      ) {
-        commands.right = false;
-        commands.left = true;
+      try {
+        commands = await this.mlLogicWithTimeout();
+      } catch (error) {
+        throw new Error("ML inference failed, using fallback rules: " + error);
       }
     }
+
+    // Apply hysteresis to prevent flickering
+    commands = this.applyHysteresis(commands);
 
     return commands;
   }
 
   /**
-   * Neural network-based logic for autopilot.
-   * Sends car state to FastAPI inference server and receives control commands.
+   * ML inference with timeout budget.
+   * Sends sequence to FastAPI inference server.
    */
-  private async mlLogic(state: CarState): Promise<ControlCommands> {
-    const {sensors, speed} = state;
+  private async mlLogicWithTimeout(): Promise<ControlCommands> {
+    // Create sequence payload: array of [l, ml, c, mr, r, speed]
+    const sequence = this.observationBuffer.map((obs) => [
+      obs.l,
+      obs.ml,
+      obs.c,
+      obs.mr,
+      obs.r,
+      obs.speed,
+    ]);
 
-    // Prepare request payload with all 5 sensor values
-    // Apply safety margin to compensate for network delay (act as if walls are closer)
     const payload = {
-      l_sensor: Math.max(0, sensors.left - this.NETWORK_SAFETY_MARGIN),
-      ml_sensor: Math.max(0, sensors.midLeft - this.NETWORK_SAFETY_MARGIN),
-      c_sensor: Math.max(0, sensors.center - this.NETWORK_SAFETY_MARGIN),
-      mr_sensor: Math.max(0, sensors.midRight - this.NETWORK_SAFETY_MARGIN),
-      r_sensor: Math.max(0, sensors.right - this.NETWORK_SAFETY_MARGIN),
-      speed: speed,
+      dt_ms: this.DT_MS,
+      x: sequence,
+      prev_actions: this.lastPredictedActions, // Send previous predictions for temporal consistency
     };
 
-    // Call FastAPI inference endpoint
-    const response = await fetch(this.ML_API_URL, {
+    // Race between fetch and timeout
+    const fetchPromise = fetch(this.ML_API_URL, {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(payload),
     });
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(
+        () => reject(new Error("ML inference timeout")),
+        this.TIMEOUT_MS
+      );
+    });
+
+    const response = await Promise.race([fetchPromise, timeoutPromise]);
 
     if (!response.ok) {
       throw new Error(
@@ -210,12 +202,67 @@ export class AutopilotSystem {
 
     const result = await response.json();
 
-    // Return control commands from neural network
-    return {
+    const commands = {
       forward: result.forward,
       backward: result.backward,
       left: result.left,
       right: result.right,
     };
+
+    // Update last predicted actions for next inference call
+    // Convert boolean commands to 0/1 for model input format
+    this.lastPredictedActions = [
+      commands.forward ? 1 : 0,
+      commands.left ? 1 : 0,
+      commands.backward ? 1 : 0,
+      commands.right ? 1 : 0,
+    ];
+
+    return commands;
+  }
+
+  /**
+   * Apply hysteresis to prevent command flickering.
+   * CURRENTLY DISABLED (HYSTERESIS_TIME_MS = 0) to match training behavior.
+   * Model was trained with 50ms intervals and immediate action execution.
+   */
+  private applyHysteresis(commands: ControlCommands): ControlCommands {
+    const now = Date.now();
+
+    if (this.previousCommands === null) {
+      // First command, no hysteresis
+      this.previousCommands = {...commands, timestamp: now};
+      return commands;
+    }
+
+    // Check if commands changed
+    const changed =
+      commands.forward !== this.previousCommands.forward ||
+      commands.backward !== this.previousCommands.backward ||
+      commands.left !== this.previousCommands.left ||
+      commands.right !== this.previousCommands.right;
+
+    if (!changed) {
+      // No change, update timestamp
+      this.previousCommands.timestamp = now;
+      return commands;
+    }
+
+    // Commands changed - check if enough time passed
+    const timeSinceLastChange = now - this.previousCommands.timestamp;
+
+    if (timeSinceLastChange < this.HYSTERESIS_TIME_MS) {
+      // Too soon, keep previous commands (with HYSTERESIS_TIME_MS=0, this never happens)
+      return {
+        forward: this.previousCommands.forward,
+        backward: this.previousCommands.backward,
+        left: this.previousCommands.left,
+        right: this.previousCommands.right,
+      };
+    }
+
+    // Enough time passed (or hysteresis disabled), accept new commands
+    this.previousCommands = {...commands, timestamp: now};
+    return commands;
   }
 }

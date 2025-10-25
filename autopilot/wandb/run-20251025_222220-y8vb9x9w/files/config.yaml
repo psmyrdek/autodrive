@@ -1,0 +1,84 @@
+_wandb:
+    value:
+        cli_version: 0.22.2
+        e:
+            l9qmsj0clssj2v85u1oxx5tr68cg0dmq:
+                apple:
+                    ecpuCores: 4
+                    gpuCores: 32
+                    memoryGb: 36
+                    name: Apple M4 Max
+                    pcpuCores: 10
+                    ramTotalBytes: "38654705664"
+                    swapTotalBytes: "2147483648"
+                cpu_count: 14
+                cpu_count_logical: 14
+                disk:
+                    /:
+                        total: "994662584320"
+                        used: "558928236544"
+                email: przemek.smyrdek@gmail.com
+                executable: /Users/psmyrdek/dev/ml-projects/autodrive/autopilot/.venv/bin/python3
+                git:
+                    commit: 3d96d05779e511096e08ba9e77abe576be126b65
+                    remote: git@github.com:psmyrdek/autodrive.git
+                host: MacBook-Pro-Przemek.local
+                memory:
+                    total: "38654705664"
+                os: macOS-26.0.1-arm64-arm-64bit
+                program: -m autopilot.train
+                python: CPython 3.11.13
+                root: /Users/psmyrdek/dev/ml-projects/autodrive/autopilot
+                startedAt: "2025-10-25T20:22:20.475883Z"
+                writerId: l9qmsj0clssj2v85u1oxx5tr68cg0dmq
+        m: []
+        python_version: 3.11.13
+        t:
+            "1":
+                - 1
+            "2":
+                - 1
+            "3":
+                - 2
+                - 15
+                - 16
+                - 61
+                - 62
+            "4": 3.11.13
+            "5": 0.22.2
+            "10":
+                - 20
+            "12": 0.22.2
+            "13": darwin-arm64
+batch_size:
+    value: 32
+device:
+    value: mps
+dropout:
+    value: 0.1
+early_stopping_patience:
+    value: 5
+epochs:
+    value: 50
+fc_hidden:
+    value: 64
+hidden_size:
+    value: 128
+label_smoothing:
+    value: 0.05
+learning_rate:
+    value: 0.001
+max_lr:
+    value: 0.003
+model_type:
+    value: GRU
+num_layers:
+    value: 2
+seq_len:
+    value: 10
+use_scheduler:
+    value: true
+val_split:
+    value: 0.2
+weight_decay:
+    value: 0.0003

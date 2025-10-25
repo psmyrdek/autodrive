@@ -1,0 +1,35 @@
+{
+  "os":  "macOS-26.0.1-arm64-arm-64bit",
+  "python":  "CPython 3.11.13",
+  "startedAt":  "2025-10-25T20:22:20.475883Z",
+  "program":  "-m autopilot.train",
+  "git":  {
+    "remote":  "git@github.com:psmyrdek/autodrive.git",
+    "commit":  "3d96d05779e511096e08ba9e77abe576be126b65"
+  },
+  "email":  "przemek.smyrdek@gmail.com",
+  "root":  "/Users/psmyrdek/dev/ml-projects/autodrive/autopilot",
+  "host":  "MacBook-Pro-Przemek.local",
+  "executable":  "/Users/psmyrdek/dev/ml-projects/autodrive/autopilot/.venv/bin/python3",
+  "cpu_count":  14,
+  "cpu_count_logical":  14,
+  "disk":  {
+    "/":  {
+      "total":  "994662584320",
+      "used":  "558928236544"
+    }
+  },
+  "memory":  {
+    "total":  "38654705664"
+  },
+  "apple":  {
+    "name":  "Apple M4 Max",
+    "ecpuCores":  4,
+    "pcpuCores":  10,
+    "gpuCores":  32,
+    "memoryGb":  36,
+    "swapTotalBytes":  "2147483648",
+    "ramTotalBytes":  "38654705664"
+  },
+  "writerId":  "l9qmsj0clssj2v85u1oxx5tr68cg0dmq"
+}

@@ -1,4 +1,4 @@
-"""Load and parse telemetry JSON files."""
+"""Load and parse telemetry JSON files for GRU sequence training."""
 
 import json
 from pathlib import Path
@@ -7,110 +7,157 @@ from typing import Tuple
 import numpy as np
 
 
-def load_telemetry_data(telemetry_dir: str = "../server/telemetry") -> Tuple[np.ndarray, np.ndarray]:
+def load_telemetry_sequences(
+    telemetry_dir: str = "../server/telemetry",
+    seq_len: int = 5
+) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Load all telemetry JSON files and extract features and labels.
+    Load telemetry data and create sequences for GRU training.
+
+    Each sequence consists of seq_len timesteps, and predicts the actions at the final timestep.
+    Per-file processing ensures sequences don't cross different driving sessions.
 
     Args:
         telemetry_dir: Path to directory containing telemetry JSON files
+        seq_len: Number of timesteps in each sequence (default: 5)
 
     Returns:
-        Tuple of (features, labels) as numpy arrays
-        - features: shape (N, 6) - [l_sensor_range, ml_sensor_range, c_sensor_range, mr_sensor_range, r_sensor_range, speed]
-        - labels: shape (N, 4) - [w_pressed, a_pressed, s_pressed, d_pressed] as binary (0/1)
+        Tuple of (sequences, labels) as numpy arrays
+        - sequences: shape (N, seq_len, 10) where features per timestep are:
+          [l_sensor, ml_sensor, c_sensor, mr_sensor, r_sensor, speed,
+           w_pressed_prev, a_pressed_prev, s_pressed_prev, d_pressed_prev]
+        - labels: shape (N, 4) - [w_pressed, a_pressed, s_pressed, d_pressed] at final timestep
     """
     telemetry_path = Path(telemetry_dir)
 
     if not telemetry_path.exists():
         raise FileNotFoundError(f"Telemetry directory not found: {telemetry_dir}")
 
-    all_features = []
-    all_labels = []
-
-    # Find all JSON files
     json_files = list(telemetry_path.glob("*.json"))
 
     if not json_files:
         raise ValueError(f"No JSON files found in {telemetry_dir}")
 
-    print(f"Loading {len(json_files)} telemetry files...")
+    print(f"Loading {len(json_files)} telemetry files for sequence generation...")
+
+    all_sequences = []
+    all_labels = []
 
     for json_file in json_files:
         with open(json_file, 'r') as f:
             telemetry_data = json.load(f)
 
-        # Each file contains an array of telemetry samples
-        for sample in telemetry_data:
-            # Extract features: [l_sensor, ml_sensor, c_sensor, mr_sensor, r_sensor, speed]
-            features = [
-                sample['l_sensor_range'],
-                sample['ml_sensor_range'],
-                sample['c_sensor_range'],
-                sample['mr_sensor_range'],
-                sample['r_sensor_range'],
-                sample['speed']
+        # Skip files with too few samples
+        if len(telemetry_data) < seq_len + 1:
+            print(f"Skipping {json_file.name} (only {len(telemetry_data)} samples, need at least {seq_len + 1})")
+            continue
+
+        # Create sequences using sliding window within this file
+        for i in range(len(telemetry_data) - seq_len):
+            sequence = []
+
+            # Build sequence of seq_len timesteps
+            for t in range(seq_len):
+                sample = telemetry_data[i + t]
+
+                # Extract sensor values and speed
+                sensors_and_speed = [
+                    sample['l_sensor_range'],
+                    sample['ml_sensor_range'],
+                    sample['c_sensor_range'],
+                    sample['mr_sensor_range'],
+                    sample['r_sensor_range'],
+                    sample['speed']
+                ]
+
+                # Get previous actions (from timestep t-1)
+                if t == 0:
+                    # For first timestep in sequence, use zeros or previous sample if available
+                    if i > 0:
+                        prev_sample = telemetry_data[i - 1]
+                        prev_actions = [
+                            int(prev_sample['w_pressed']),
+                            int(prev_sample['a_pressed']),
+                            int(prev_sample['s_pressed']),
+                            int(prev_sample['d_pressed'])
+                        ]
+                    else:
+                        prev_actions = [0, 0, 0, 0]
+                else:
+                    prev_sample = telemetry_data[i + t - 1]
+                    prev_actions = [
+                        int(prev_sample['w_pressed']),
+                        int(prev_sample['a_pressed']),
+                        int(prev_sample['s_pressed']),
+                        int(prev_sample['d_pressed'])
+                    ]
+
+                # Combine: [sensors, speed, prev_actions]
+                timestep_features = sensors_and_speed + prev_actions
+                sequence.append(timestep_features)
+
+            # Label is the action at the final timestep (i + seq_len)
+            label_sample = telemetry_data[i + seq_len]
+            label = [
+                int(label_sample['w_pressed']),
+                int(label_sample['a_pressed']),
+                int(label_sample['s_pressed']),
+                int(label_sample['d_pressed'])
             ]
 
-            # Extract labels: [w_pressed, a_pressed, s_pressed, d_pressed]
-            # Convert boolean to binary (0/1)
-            labels = [
-                int(sample['w_pressed']),
-                int(sample['a_pressed']),
-                int(sample['s_pressed']),
-                int(sample['d_pressed'])
-            ]
-
-            all_features.append(features)
-            all_labels.append(labels)
+            all_sequences.append(sequence)
+            all_labels.append(label)
 
     # Convert to numpy arrays
-    features_array = np.array(all_features, dtype=np.float32)
+    sequences_array = np.array(all_sequences, dtype=np.float32)
     labels_array = np.array(all_labels, dtype=np.float32)
 
-    print(f"Loaded {len(features_array)} telemetry samples")
-    print(f"Features shape: {features_array.shape}")
+    print(f"\nCreated {len(sequences_array)} sequences")
+    print(f"Sequences shape: {sequences_array.shape} (N, seq_len={seq_len}, features=10)")
     print(f"Labels shape: {labels_array.shape}")
 
-    # Print some statistics
-    print("\nFeature statistics:")
-    print(f"  L sensor range:  min={features_array[:, 0].min():.1f}, max={features_array[:, 0].max():.1f}, mean={features_array[:, 0].mean():.1f}")
-    print(f"  ML sensor range: min={features_array[:, 1].min():.1f}, max={features_array[:, 1].max():.1f}, mean={features_array[:, 1].mean():.1f}")
-    print(f"  C sensor range:  min={features_array[:, 2].min():.1f}, max={features_array[:, 2].max():.1f}, mean={features_array[:, 2].mean():.1f}")
-    print(f"  MR sensor range: min={features_array[:, 3].min():.1f}, max={features_array[:, 3].max():.1f}, mean={features_array[:, 3].mean():.1f}")
-    print(f"  R sensor range:  min={features_array[:, 4].min():.1f}, max={features_array[:, 4].max():.1f}, mean={features_array[:, 4].mean():.1f}")
-    print(f"  Speed:           min={features_array[:, 5].min():.1f}, max={features_array[:, 5].max():.1f}, mean={features_array[:, 5].mean():.1f}")
-
+    # Print label distribution
     print("\nLabel distribution:")
     print(f"  W pressed: {labels_array[:, 0].sum()}/{len(labels_array)} ({100*labels_array[:, 0].mean():.1f}%)")
     print(f"  A pressed: {labels_array[:, 1].sum()}/{len(labels_array)} ({100*labels_array[:, 1].mean():.1f}%)")
     print(f"  S pressed: {labels_array[:, 2].sum()}/{len(labels_array)} ({100*labels_array[:, 2].mean():.1f}%)")
     print(f"  D pressed: {labels_array[:, 3].sum()}/{len(labels_array)} ({100*labels_array[:, 3].mean():.1f}%)")
 
-    return features_array, labels_array
+    return sequences_array, labels_array
 
 
-def normalize_features(features: np.ndarray) -> Tuple[np.ndarray, dict]:
+def normalize_sequences(sequences: np.ndarray) -> Tuple[np.ndarray, dict]:
     """
-    Normalize features to zero mean and unit variance.
+    Normalize sequences to zero mean and unit variance.
+    Normalization is applied per-feature across all sequences and timesteps.
 
     Args:
-        features: Feature array to normalize
+        sequences: Sequence array of shape (N, seq_len, features)
 
     Returns:
-        Tuple of (normalized_features, normalization_params)
+        Tuple of (normalized_sequences, normalization_params)
         normalization_params contains mean and std for each feature
     """
-    mean = features.mean(axis=0)
-    std = features.std(axis=0)
+    # Reshape to (N*seq_len, features) for normalization
+    N, seq_len, features = sequences.shape
+    reshaped = sequences.reshape(-1, features)
+
+    # Compute mean and std per feature
+    mean = reshaped.mean(axis=0)
+    std = reshaped.std(axis=0)
 
     # Avoid division by zero
     std = np.where(std == 0, 1, std)
 
-    normalized = (features - mean) / std
+    # Normalize
+    normalized_reshaped = (reshaped - mean) / std
+
+    # Reshape back to (N, seq_len, features)
+    normalized_sequences = normalized_reshaped.reshape(N, seq_len, features)
 
     params = {
         'mean': mean.tolist(),
         'std': std.tolist()
     }
 
-    return normalized, params
+    return normalized_sequences, params
