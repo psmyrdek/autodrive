@@ -1,12 +1,6 @@
 name: Train Model Architectures
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "autopilot/src/autopilot/**"
-      - "server/telemetry/**"
-      - ".github/workflows/train-models.yml"
   workflow_dispatch:
 
 jobs:
@@ -104,56 +98,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
-
-      - name: Generate model comparison report
-        run: |
-          echo "# High-Intensity Model Architecture Comparison Report" > model-comparison.md
-          echo "" >> model-comparison.md
-          echo "## Configuration Summary (Quality-Focused)" >> model-comparison.md
-          echo "" >> model-comparison.md
-          echo "### Deep Stack Model" >> model-comparison.md
-          echo "- Hidden Size: 192" >> model-comparison.md
-          echo "- Layers: 5" >> model-comparison.md
-          echo "- FC Hidden: 96" >> model-comparison.md
-          echo "- Dropout: 0.15" >> model-comparison.md
-          echo "- Weight Decay: 2e-4" >> model-comparison.md
-          echo "- Label Smoothing: 0.03" >> model-comparison.md
-          echo "- Epochs: 100" >> model-comparison.md
-          echo "- Batch Size: 16" >> model-comparison.md
-          echo "- Strategy: Deep sequential learning, excellent feature extraction" >> model-comparison.md
-          echo "" >> model-comparison.md
-          echo "### Wide Capacity Model" >> model-comparison.md
-          echo "- Hidden Size: 384" >> model-comparison.md
-          echo "- Layers: 3" >> model-comparison.md
-          echo "- FC Hidden: 192" >> model-comparison.md
-          echo "- Dropout: 0.08" >> model-comparison.md
-          echo "- Weight Decay: 1e-4" >> model-comparison.md
-          echo "- Label Smoothing: 0.02" >> model-comparison.md
-          echo "- Epochs: 120" >> model-comparison.md
-          echo "- Batch Size: 12" >> model-comparison.md
-          echo "- Strategy: Maximum parameter capacity, longest training" >> model-comparison.md
-          echo "" >> model-comparison.md
-          echo "### Precision Tuned Model" >> model-comparison.md
-          echo "- Hidden Size: 256" >> model-comparison.md
-          echo "- Layers: 4" >> model-comparison.md
-          echo "- FC Hidden: 128" >> model-comparison.md
-          echo "- Dropout: 0.1" >> model-comparison.md
-          echo "- Weight Decay: 3e-4" >> model-comparison.md
-          echo "- Label Smoothing: 0.04" >> model-comparison.md
-          echo "- Epochs: 100" >> model-comparison.md
-          echo "- Batch Size: 16" >> model-comparison.md
-          echo "- Strategy: Balanced depth/width with moderate regularization" >> model-comparison.md
-          echo "" >> model-comparison.md
-          echo "## Generated Artifacts" >> model-comparison.md
-          echo "" >> model-comparison.md
-          ls -la artifacts/ >> model-comparison.md
-
-      - name: Upload comparison report
-        uses: actions/upload-artifact@v4
-        with:
-          name: model-comparison-report
-          path: model-comparison.md
-          retention-days: 30
 
       - name: Comment on workflow status
         if: success()
