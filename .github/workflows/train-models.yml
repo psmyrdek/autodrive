@@ -69,7 +69,7 @@ jobs:
       - name: Train ${{ matrix.model-config.name }} model
         run: |
           cd autopilot
-          python -m autopilot.train \
+          uv run python -m autopilot.train \
             --output-dir "./models/${{ matrix.model-config.name }}" \
             --epochs ${{ matrix.model-config.epochs }} \
             --batch-size ${{ matrix.model-config.batch_size }} \
@@ -82,8 +82,6 @@ jobs:
             --label-smoothing ${{ matrix.model-config.label_smoothing }} \
             --max-lr ${{ matrix.model-config.max_lr }} \
             --quiet
-        env:
-          WANDB_MODE: offline
 
       - name: Upload ${{ matrix.model-config.name }} model artifacts
         if: always()

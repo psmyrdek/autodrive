@@ -172,7 +172,7 @@ def train(
     num_layers: int = 2,
     fc_hidden: int = 64,
     dropout: float = 0.1,
-    wandb: bool = True,
+    wandb: bool = False,
     early_stopping_patience: int = 5,
     weight_decay: float = 3e-4,
     label_smoothing: float = 0.05,
@@ -196,6 +196,7 @@ def train(
         num_layers: Number of GRU layers (default: 2)
         fc_hidden: FC layer size after GRU (default: 64)
         dropout: Dropout rate (default: 0.1)
+        wandb: Enable Weights & Biases logging (default: False)
         early_stopping_patience: Stop training after N epochs without val loss improvement (default: 5)
         weight_decay: L2 regularization for AdamW (default: 3e-4)
         label_smoothing: Label smoothing factor for loss (default: 0.05)
@@ -527,6 +528,11 @@ def main():
         default=3e-3,
         help="Maximum learning rate for OneCycle scheduler (default: 3e-3)"
     )
+    parser.add_argument(
+        "--wandb",
+        action="store_true",
+        help="Enable Weights & Biases logging (disabled by default)"
+    )
 
     args = parser.parse_args()
 
@@ -544,6 +550,7 @@ def main():
         num_layers=args.num_layers,
         fc_hidden=args.fc_hidden,
         dropout=args.dropout,
+        wandb=args.wandb,
         early_stopping_patience=args.early_stopping_patience,
         weight_decay=args.weight_decay,
         label_smoothing=args.label_smoothing,
