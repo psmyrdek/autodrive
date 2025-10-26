@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
         model-config:
-          - name: "deep-stack"
+          - name: "basic"
             hidden_size: 192
             num_layers: 5
             fc_hidden: 96
@@ -21,7 +21,7 @@ jobs:
             batch_size: 16
             max_lr: 2e-3
 
-          - name: "wide-capacity"
+          - name: "wide"
             hidden_size: 384
             num_layers: 3
             fc_hidden: 192
@@ -31,17 +31,6 @@ jobs:
             epochs: 120
             batch_size: 12
             max_lr: 1.5e-3
-
-          - name: "precision-tuned"
-            hidden_size: 256
-            num_layers: 4
-            fc_hidden: 128
-            dropout: 0.1
-            weight_decay: 3e-4
-            label_smoothing: 0.04
-            epochs: 100
-            batch_size: 16
-            max_lr: 2.5e-3
 
     steps:
       - name: Checkout code
@@ -102,9 +91,8 @@ jobs:
       - name: Comment on workflow status
         if: success()
         run: |
-          echo "✓ All high-intensity model training completed successfully"
+          echo "✓ All model training completed successfully"
           echo "✓ Models available as artifacts for download"
-          echo "✓ Quality-Focused Configurations:"
-          echo "  - deep-stack: 5 layers, 192 hidden (deep sequential learning)"
-          echo "  - wide-capacity: 3 layers, 384 hidden (maximum parameters, 120 epochs)"
-          echo "  - precision-tuned: 4 layers, 256 hidden (balanced architecture)"
+          echo "✓ Configurations:"
+          echo "  - basic: 5 layers, 192 hidden (deep sequential learning)"
+          echo "  - wide: 3 layers, 384 hidden (maximum parameters, 120 epochs)"
