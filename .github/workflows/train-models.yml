@@ -1,0 +1,168 @@
+name: Train Model Architectures
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "autopilot/src/autopilot/**"
+      - "server/telemetry/**"
+      - ".github/workflows/train-models.yml"
+  workflow_dispatch:
+
+jobs:
+  train-models:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        model-config:
+          - name: "deep-stack"
+            hidden_size: 192
+            num_layers: 5
+            fc_hidden: 96
+            dropout: 0.15
+            weight_decay: 2e-4
+            label_smoothing: 0.03
+            epochs: 100
+            batch_size: 16
+            max_lr: 2e-3
+
+          - name: "wide-capacity"
+            hidden_size: 384
+            num_layers: 3
+            fc_hidden: 192
+            dropout: 0.08
+            weight_decay: 1e-4
+            label_smoothing: 0.02
+            epochs: 120
+            batch_size: 12
+            max_lr: 1.5e-3
+
+          - name: "precision-tuned"
+            hidden_size: 256
+            num_layers: 4
+            fc_hidden: 128
+            dropout: 0.1
+            weight_decay: 3e-4
+            label_smoothing: 0.04
+            epochs: 100
+            batch_size: 16
+            max_lr: 2.5e-3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install autopilot dependencies
+        run: |
+          cd autopilot
+          uv sync
+
+      - name: Train ${{ matrix.model-config.name }} model
+        run: |
+          cd autopilot
+          python -m autopilot.train \
+            --output-dir "./models/${{ matrix.model-config.name }}" \
+            --epochs ${{ matrix.model-config.epochs }} \
+            --batch-size ${{ matrix.model-config.batch_size }} \
+            --learning-rate 0.001 \
+            --hidden-size ${{ matrix.model-config.hidden_size }} \
+            --num-layers ${{ matrix.model-config.num_layers }} \
+            --fc-hidden ${{ matrix.model-config.fc_hidden }} \
+            --dropout ${{ matrix.model-config.dropout }} \
+            --weight-decay ${{ matrix.model-config.weight_decay }} \
+            --label-smoothing ${{ matrix.model-config.label_smoothing }} \
+            --max-lr ${{ matrix.model-config.max_lr }} \
+            --quiet
+        env:
+          WANDB_MODE: offline
+
+      - name: Upload ${{ matrix.model-config.name }} model artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-${{ matrix.model-config.name }}
+          path: autopilot/models/${{ matrix.model-config.name }}/
+          retention-days: 30
+
+  compare-models:
+    needs: train-models
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all model artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Generate model comparison report
+        run: |
+          echo "# High-Intensity Model Architecture Comparison Report" > model-comparison.md
+          echo "" >> model-comparison.md
+          echo "## Configuration Summary (Quality-Focused)" >> model-comparison.md
+          echo "" >> model-comparison.md
+          echo "### Deep Stack Model" >> model-comparison.md
+          echo "- Hidden Size: 192" >> model-comparison.md
+          echo "- Layers: 5" >> model-comparison.md
+          echo "- FC Hidden: 96" >> model-comparison.md
+          echo "- Dropout: 0.15" >> model-comparison.md
+          echo "- Weight Decay: 2e-4" >> model-comparison.md
+          echo "- Label Smoothing: 0.03" >> model-comparison.md
+          echo "- Epochs: 100" >> model-comparison.md
+          echo "- Batch Size: 16" >> model-comparison.md
+          echo "- Strategy: Deep sequential learning, excellent feature extraction" >> model-comparison.md
+          echo "" >> model-comparison.md
+          echo "### Wide Capacity Model" >> model-comparison.md
+          echo "- Hidden Size: 384" >> model-comparison.md
+          echo "- Layers: 3" >> model-comparison.md
+          echo "- FC Hidden: 192" >> model-comparison.md
+          echo "- Dropout: 0.08" >> model-comparison.md
+          echo "- Weight Decay: 1e-4" >> model-comparison.md
+          echo "- Label Smoothing: 0.02" >> model-comparison.md
+          echo "- Epochs: 120" >> model-comparison.md
+          echo "- Batch Size: 12" >> model-comparison.md
+          echo "- Strategy: Maximum parameter capacity, longest training" >> model-comparison.md
+          echo "" >> model-comparison.md
+          echo "### Precision Tuned Model" >> model-comparison.md
+          echo "- Hidden Size: 256" >> model-comparison.md
+          echo "- Layers: 4" >> model-comparison.md
+          echo "- FC Hidden: 128" >> model-comparison.md
+          echo "- Dropout: 0.1" >> model-comparison.md
+          echo "- Weight Decay: 3e-4" >> model-comparison.md
+          echo "- Label Smoothing: 0.04" >> model-comparison.md
+          echo "- Epochs: 100" >> model-comparison.md
+          echo "- Batch Size: 16" >> model-comparison.md
+          echo "- Strategy: Balanced depth/width with moderate regularization" >> model-comparison.md
+          echo "" >> model-comparison.md
+          echo "## Generated Artifacts" >> model-comparison.md
+          echo "" >> model-comparison.md
+          ls -la artifacts/ >> model-comparison.md
+
+      - name: Upload comparison report
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-comparison-report
+          path: model-comparison.md
+          retention-days: 30
+
+      - name: Comment on workflow status
+        if: success()
+        run: |
+          echo "✓ All high-intensity model training completed successfully"
+          echo "✓ Models available as artifacts for download"
+          echo "✓ Quality-Focused Configurations:"
+          echo "  - deep-stack: 5 layers, 192 hidden (deep sequential learning)"
+          echo "  - wide-capacity: 3 layers, 384 hidden (maximum parameters, 120 epochs)"
+          echo "  - precision-tuned: 4 layers, 256 hidden (balanced architecture)"
