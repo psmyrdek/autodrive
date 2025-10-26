@@ -162,7 +162,7 @@ export default class GameScene extends Phaser.Scene {
 
       // Handle input - either from autopilot or manual control
       if (this.isAutopilotEnabled) {
-        this.handleAutopilotInput(deltaSeconds);
+        this.handleAutopilotInput(delta, deltaSeconds);
       } else {
         this.inputManager.handleInput(this.carPhysics, deltaSeconds);
       }
@@ -252,7 +252,7 @@ export default class GameScene extends Phaser.Scene {
    * Handle autopilot input by getting commands from AutopilotSystem
    * and applying them to CarPhysics
    */
-  private handleAutopilotInput(deltaSeconds: number) {
+  private handleAutopilotInput(deltaMs: number, deltaSeconds: number) {
     // Prepare current car state for autopilot
     const carState: CarState = {
       body: this.carPhysics.carBody,
@@ -262,7 +262,8 @@ export default class GameScene extends Phaser.Scene {
 
     // Get control commands from autopilot (async, non-blocking)
     // We use .then() to avoid blocking the game loop
-    this.autopilotSystem.getControlCommands(carState).then((commands) => {
+    // CRITICAL: Pass deltaMs for time accumulator (maintains 50ms sampling rate)
+    this.autopilotSystem.getControlCommands(deltaMs, carState).then((commands) => {
       // Apply commands to car physics (same as manual input would)
       const speed = this.carPhysics.getSpeed();
 

@@ -44,11 +44,22 @@ export class AutopilotSystem {
 
   // Ring-buffer for temporal sequences
   private readonly SEQUENCE_LENGTH = 10; // T = 10 timesteps (500ms history at 50ms intervals)
-  private readonly DT_MS = 50; // Expected time between observations
+  private readonly SAMPLE_INTERVAL_MS = 50; // Must match TelemetryTracker sampling rate!
   private observationBuffer: Observation[] = [];
+
+  // Time accumulator for fixed-rate sampling (matches training data collection)
+  private timeAccumulator: number = 0;
 
   // Timeout budget for ML inference
   private readonly TIMEOUT_MS = 25; // Max time to wait for ML response
+
+  // Cached commands (returned between 50ms inference cycles)
+  private cachedCommands: ControlCommands = {
+    forward: true,
+    backward: false,
+    left: false,
+    right: false,
+  };
 
   // Hysteresis to prevent flickering
   private previousCommands: PreviousCommands | null = null;
@@ -68,8 +79,15 @@ export class AutopilotSystem {
    */
   async resetBuffer(): Promise<void> {
     this.observationBuffer = [];
+    this.timeAccumulator = 0;
     this.previousCommands = null;
     this.lastPredictedActions = [0, 0, 0, 0]; // Reset previous actions
+    this.cachedCommands = {
+      forward: true,
+      backward: false,
+      left: false,
+      right: false,
+    };
 
     if (!this.mlAvailable) {
       return;
@@ -112,50 +130,58 @@ export class AutopilotSystem {
 
   /**
    * Main entry point: takes current car state and returns control commands.
-   * Uses neural network with sequence buffer, timeout, safety envelope, and hysteresis.
+   * Uses time accumulator to sample at exactly 50ms intervals (matching training data).
+   * Returns cached commands between inference cycles for consistent frame rate.
+   *
+   * CRITICAL: Must be called every frame with accurate deltaTime to maintain temporal consistency!
+   *
+   * @param deltaTime - Time elapsed since last frame (in milliseconds)
+   * @param state - Current car state (position, sensors, speed)
+   * @returns Control commands (may be cached from previous inference)
    */
-  async getControlCommands(state: CarState): Promise<ControlCommands> {
-    // Add current observation to buffer
-    const THRESHOLD = 40;
-    const observation: Observation = {
-      l: Math.max(0, state.sensors.left - THRESHOLD),
-      ml: Math.max(0, state.sensors.midLeft - THRESHOLD),
-      c: Math.max(0, state.sensors.center - THRESHOLD),
-      mr: Math.max(0, state.sensors.midRight - THRESHOLD),
-      r: Math.max(0, state.sensors.right - THRESHOLD),
-      speed: state.speed,
-    };
+  async getControlCommands(deltaTime: number, state: CarState): Promise<ControlCommands> {
+    this.timeAccumulator += deltaTime;
 
-    this.observationBuffer.push(observation);
+    // Only sample and run inference at 50ms intervals (same as training data collection)
+    if (this.timeAccumulator >= this.SAMPLE_INTERVAL_MS) {
+      this.timeAccumulator -= this.SAMPLE_INTERVAL_MS;
 
-    // Maintain buffer size (ring-buffer behavior)
-    if (this.observationBuffer.length > this.SEQUENCE_LENGTH) {
-      this.observationBuffer.shift();
-    }
+      // Create observation with RAW sensor values (matching TelemetryTracker - no THRESHOLD!)
+      const observation: Observation = {
+        l: state.sensors.left,
+        ml: state.sensors.midLeft,
+        c: state.sensors.center,
+        mr: state.sensors.midRight,
+        r: state.sensors.right,
+        speed: state.speed,
+      };
 
-    // Try ML inference with timeout and fallback
-    let commands: ControlCommands = {
-      forward: true,
-      backward: false,
-      left: false,
-      right: false,
-    };
+      this.observationBuffer.push(observation);
 
-    if (
-      this.mlAvailable &&
-      this.observationBuffer.length >= this.SEQUENCE_LENGTH
-    ) {
-      try {
-        commands = await this.mlLogicWithTimeout();
-      } catch (error) {
-        throw new Error("ML inference failed, using fallback rules: " + error);
+      // Maintain buffer size (ring-buffer behavior)
+      if (this.observationBuffer.length > this.SEQUENCE_LENGTH) {
+        this.observationBuffer.shift();
+      }
+
+      // Run ML inference only when buffer is full
+      if (
+        this.mlAvailable &&
+        this.observationBuffer.length >= this.SEQUENCE_LENGTH
+      ) {
+        try {
+          const commands = await this.mlLogicWithTimeout();
+
+          // Apply hysteresis to prevent flickering
+          this.cachedCommands = this.applyHysteresis(commands);
+        } catch (error) {
+          console.error("[Autopilot] ML inference failed:", error);
+          // Keep using last cached commands on error
+        }
       }
     }
 
-    // Apply hysteresis to prevent flickering
-    commands = this.applyHysteresis(commands);
-
-    return commands;
+    // Return cached commands (updated at 50ms intervals, returned at frame rate)
+    return this.cachedCommands;
   }
 
   /**
@@ -174,7 +200,7 @@ export class AutopilotSystem {
     ]);
 
     const payload = {
-      dt_ms: this.DT_MS,
+      dt_ms: this.SAMPLE_INTERVAL_MS,
       x: sequence,
       prev_actions: this.lastPredictedActions, // Send previous predictions for temporal consistency
     };

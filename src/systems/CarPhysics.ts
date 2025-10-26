@@ -11,11 +11,14 @@ export interface CarBody {
 }
 
 export class CarPhysics {
-  private readonly ACCELERATION = 300;
-  private readonly MAX_SPEED = 400;
-  private readonly FRICTION = 0.96;
-  private readonly TURN_SPEED = 3.5;
-  private readonly REVERSE_SPEED = 150;
+  // Realistic car physics with grip-based handling
+  private readonly ACCELERATION = 100; // Forward acceleration force - more gradual
+  private readonly MAX_SPEED = 250; // Moderate top speed for better control
+  private readonly FORWARD_FRICTION = 0.996; // Rolling resistance when coasting - car maintains momentum
+  private readonly LATERAL_GRIP = 0.85; // Tire grip - reduces sideways sliding (lower = more grip)
+  private readonly TURN_SPEED = 4.0; // Base turning rate (reduced at high speeds)
+  private readonly REVERSE_SPEED = 120; // Reverse acceleration (proportional to forward)
+  private readonly BRAKE_FORCE = 0.99; // Gradual braking - requires holding to slow down
 
   public carBody: CarBody = {
     x: 0,
@@ -103,24 +106,57 @@ export class CarPhysics {
   }
 
   brake() {
-    this.carBody.velocityX *= 0.92;
-    this.carBody.velocityY *= 0.92;
+    this.carBody.velocityX *= this.BRAKE_FORCE;
+    this.carBody.velocityY *= this.BRAKE_FORCE;
   }
 
   turnLeft(deltaSeconds: number) {
-    const turnAmount = this.TURN_SPEED * deltaSeconds;
+    const speed = this.getSpeed();
+    // Turn rate decreases with speed - can't turn sharply at high speeds
+    const speedFactor = Math.max(0.3, 1.0 - (speed / this.MAX_SPEED) * 0.7);
+    const turnAmount = this.TURN_SPEED * deltaSeconds * speedFactor;
     this.carBody.rotation -= turnAmount;
   }
 
   turnRight(deltaSeconds: number) {
-    const turnAmount = this.TURN_SPEED * deltaSeconds;
+    const speed = this.getSpeed();
+    // Turn rate decreases with speed - can't turn sharply at high speeds
+    const speedFactor = Math.max(0.3, 1.0 - (speed / this.MAX_SPEED) * 0.7);
+    const turnAmount = this.TURN_SPEED * deltaSeconds * speedFactor;
     this.carBody.rotation += turnAmount;
   }
 
   applyPhysics(deltaSeconds: number) {
-    // Apply friction
-    this.carBody.velocityX *= this.FRICTION;
-    this.carBody.velocityY *= this.FRICTION;
+    // This is the key to realistic car physics: lateral grip
+    // We decompose velocity into forward (along car direction) and lateral (perpendicular) components
+
+    // Get car's forward direction vector
+    const forwardX = Math.cos(this.carBody.rotation);
+    const forwardY = Math.sin(this.carBody.rotation);
+
+    // Get car's lateral (sideways) direction vector
+    const lateralX = -forwardY; // Perpendicular to forward
+    const lateralY = forwardX;
+
+    // Decompose current velocity into forward and lateral components
+    // Using dot product to project velocity onto each axis
+    const forwardVelocity =
+      this.carBody.velocityX * forwardX + this.carBody.velocityY * forwardY;
+    const lateralVelocity =
+      this.carBody.velocityX * lateralX + this.carBody.velocityY * lateralY;
+
+    // Apply tire grip - strongly reduce lateral (sideways) velocity
+    // This is what makes the car stick to the road and follow where it's pointed
+    const newLateralVelocity = lateralVelocity * this.LATERAL_GRIP;
+
+    // Apply rolling resistance to forward velocity
+    const newForwardVelocity = forwardVelocity * this.FORWARD_FRICTION;
+
+    // Reconstruct velocity vector from forward and lateral components
+    this.carBody.velocityX =
+      newForwardVelocity * forwardX + newLateralVelocity * lateralX;
+    this.carBody.velocityY =
+      newForwardVelocity * forwardY + newLateralVelocity * lateralY;
 
     // Clamp to max speed
     const speed = this.getSpeed();
@@ -148,9 +184,7 @@ export class CarPhysics {
   }
 
   getSpeed(): number {
-    return Math.sqrt(
-      this.carBody.velocityX ** 2 + this.carBody.velocityY ** 2
-    );
+    return Math.sqrt(this.carBody.velocityX ** 2 + this.carBody.velocityY ** 2);
   }
 
   isCreated(): boolean {
