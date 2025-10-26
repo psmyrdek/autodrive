@@ -17,4 +17,5 @@ export interface Track {
   // Sparse points are the original user-placed control points (for editing)
   sparseOuterBorder?: Point[];
   sparseInnerBorder?: Point[];
+  texture?: string; // Optional Gemini-generated texture filename (stored in public/tracks/)
 }

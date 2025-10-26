@@ -58,8 +58,33 @@ interface Track {
   startPoint: Point;
   sparseOuterBorder?: Point[]; // Original user-placed points for editing
   sparseInnerBorder?: Point[]; // Original user-placed points for editing
+  texture?: string;            // Optional Gemini-generated texture filename
 }
 ```
+
+### AI Texture Generation
+
+Tracks can optionally have photorealistic textures generated using Replicate API:
+
+**Track Builder** (`src/components/TrackBuilder.tsx` + `src/hooks/useTextureGeneration.ts`):
+- User clicks "Generate Texture" button after completing track outline
+- Hook renders canvas with gray solid track shape (filled area between borders)
+- Sends PNG to backend via `POST /api/tracks/generate-texture`
+
+**Backend** (`server/gemini.js` + `server/index.js`):
+- Receives track shape image
+- Loads customizable prompt from `server/prompts/track-texture.js`
+- Calls Replicate API to transform gray track shape into realistic racing circuit texture
+- Saves generated texture to `public/tracks/` directory
+- Returns texture filename
+
+**Game Rendering** (`src/scenes/GameScene.ts`):
+- If track has `texture` field, dynamically loads texture image
+- Displays texture at depth -1 (behind all other elements)
+- Always renders track borders (blue outer, red inner) on top of texture
+- Borders ensure collision boundaries are clearly visible
+
+**Setup**: Requires `REPLICATE_API_TOKEN` environment variable. See `docs/TEXTURE_GENERATION.md` for details.
 
 ### Phaser Integration
 

@@ -11,6 +11,7 @@ import {AutopilotSystem, type CarState} from "../systems/AutopilotSystem";
 export default class GameScene extends Phaser.Scene {
   private track: Track | null = null;
   private graphics: Phaser.GameObjects.Graphics | null = null;
+  private trackTextureImage: Phaser.GameObjects.Image | null = null;
 
   // Game state
   private isRunning: boolean = true; // Track if game is active (not crashed)
@@ -72,6 +73,35 @@ export default class GameScene extends Phaser.Scene {
 
     this.graphics.clear();
 
+    // Remove existing texture image if present
+    if (this.trackTextureImage) {
+      this.trackTextureImage.destroy();
+      this.trackTextureImage = null;
+    }
+
+    // If track has a Gemini-generated texture, load and display it (at depth -1)
+    if (this.track.texture) {
+      this.loadAndDisplayTexture(this.track.texture);
+    }
+
+    // Always draw track borders (on top of texture if present)
+    this.drawTrackBorders();
+
+    // Always draw obstacles if present (on top of texture or borders)
+    if (this.track.obstacles && this.track.obstacles.length > 0 && this.graphics) {
+      this.graphics.lineStyle(5, 0xf97316, 1); // Orange color
+      this.track.obstacles.forEach((obstacle) => {
+        this.graphics!.beginPath();
+        this.graphics!.moveTo(obstacle.start.x, obstacle.start.y);
+        this.graphics!.lineTo(obstacle.end.x, obstacle.end.y);
+        this.graphics!.strokePath();
+      });
+    }
+  }
+
+  private drawTrackBorders() {
+    if (!this.graphics || !this.track) return;
+
     // Draw outer border in blue
     this.graphics.lineStyle(4, 0x4169e1, 1);
     if (this.track.outerBorder.length > 1) {
@@ -83,17 +113,45 @@ export default class GameScene extends Phaser.Scene {
     if (this.track.innerBorder.length > 1) {
       this.drawPath(this.track.innerBorder);
     }
+  }
 
-    // Draw obstacles in orange
-    if (this.track.obstacles && this.track.obstacles.length > 0 && this.graphics) {
-      this.graphics.lineStyle(5, 0xf97316, 1); // Orange color
-      this.track.obstacles.forEach((obstacle) => {
-        this.graphics!.beginPath();
-        this.graphics!.moveTo(obstacle.start.x, obstacle.start.y);
-        this.graphics!.lineTo(obstacle.end.x, obstacle.end.y);
-        this.graphics!.strokePath();
-      });
+  private loadAndDisplayTexture(textureFilename: string) {
+    const textureKey = `track-texture-${textureFilename}`;
+    const textureUrl = `/tracks/${textureFilename}`;
+
+    // Check if texture is already loaded
+    if (this.textures.exists(textureKey)) {
+      this.displayTexture(textureKey);
+      return;
     }
+
+    // Load texture dynamically
+    this.load.image(textureKey, textureUrl);
+
+    // Listen for load completion
+    this.load.once("complete", () => {
+      this.displayTexture(textureKey);
+    });
+
+    // Handle load errors
+    this.load.once("loaderror", (file: any) => {
+      console.error("Failed to load texture:", file.key);
+      // Borders are already drawn by renderTrack()
+    });
+
+    this.load.start();
+  }
+
+  private displayTexture(textureKey: string) {
+    // Create image at canvas center (1280x720 canvas size)
+    this.trackTextureImage = this.add.image(640, 360, textureKey);
+
+    // Send to back (below car and other game objects)
+    this.trackTextureImage.setDepth(-1);
+
+    // The texture should already be 1280x720 from Gemini
+    // But ensure it scales correctly if needed
+    this.trackTextureImage.setDisplaySize(1280, 720);
   }
 
   private drawPath(points: {x: number; y: number}[]) {
