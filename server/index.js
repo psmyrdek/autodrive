@@ -3,7 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import {fileURLToPath} from "url";
 import multer from "multer";
-import {generateTrackTexture, deleteTrackTexture} from "./fluxFill.js";
+import {generateTrackTexture, deleteTrackTexture} from "./fluxInpainter.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -142,7 +142,7 @@ app.delete("/api/tracks/:name", async (req, res) => {
   }
 });
 
-// Generate track texture using Flux Fill Pro API
+// Generate track texture using Runware API
 app.post("/api/tracks/generate-texture", async (req, res) => {
   try {
     const {outerBorder, innerBorder, trackName} = req.body;
@@ -179,7 +179,7 @@ app.post("/api/tracks/generate-texture", async (req, res) => {
 
     const name = trackName || "track";
 
-    // Generate texture using Flux Fill
+    // Generate texture using Runware
     const textureFilename = await generateTrackTexture(
       outerBorder,
       innerBorder,

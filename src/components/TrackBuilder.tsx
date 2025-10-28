@@ -102,30 +102,30 @@ export default function TrackBuilder() {
   };
 
   return (
-    <div className="relative min-h-screen bg-gray-900 overflow-hidden">
+    <div className='relative h-full min-h-fit bg-gray-900 overflow-auto'>
       {/* Centered Canvas - Fixed 720p */}
-      <div className="absolute inset-0 flex items-center justify-center">
+      <div className='absolute inset-0 flex items-center justify-center'>
         <canvas
           ref={canvasRef}
           width={1280}
-          height={720}
+          height={640}
           onClick={handleCanvasClick}
           onDoubleClick={handleCanvasDoubleClick}
-          className="bg-white cursor-crosshair shadow-2xl"
+          className='bg-white cursor-crosshair shadow-2xl'
         />
       </div>
 
       {/* Top Center - Track Name & Save Panel */}
-      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-10">
-        <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-xl border border-gray-200 p-3 flex items-center gap-3">
+      <div className='absolute top-6 left-1/2 -translate-x-1/2 z-10'>
+        <div className='bg-white/95 backdrop-blur-sm rounded-lg shadow-xl border border-gray-200 p-3 flex items-center gap-3'>
           <input
-            type="text"
+            type='text'
             value={trackName}
             onChange={(e) => setTrackName(e.target.value)}
-            className="text-lg font-semibold text-gray-800 bg-transparent border-none outline-none focus:ring-0 min-w-[300px] text-center"
-            placeholder="Untitled Track"
+            className='text-lg font-semibold text-gray-800 bg-transparent border-none outline-none focus:ring-0 min-w-[300px] text-center'
+            placeholder='Untitled Track'
           />
-          <div className="w-px h-8 bg-gray-300"></div>
+          <div className='w-px h-8 bg-gray-300'></div>
           <SavePanel
             onSave={handleSaveTrack}
             onLoadTrack={handleLoadTrack}
@@ -141,9 +141,9 @@ export default function TrackBuilder() {
       </div>
 
       {/* Bottom Center - Tools */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10">
-        <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-xl border border-gray-200 p-3">
-          <div className="flex items-center gap-2">
+      <div className='absolute bottom-6 left-1/2 -translate-x-1/2 z-10'>
+        <div className='bg-white/95 backdrop-blur-sm rounded-lg shadow-xl border border-gray-200 p-3'>
+          <div className='flex items-center gap-2'>
             <ToolPalette
               currentTool={drawingState.currentTool}
               isOuterComplete={drawingState.isOuterComplete}
@@ -152,13 +152,13 @@ export default function TrackBuilder() {
               obstaclesCount={drawingState.obstacles.length}
               onSelectTool={drawingHandlers.setCurrentTool}
             />
-            <div className="w-px h-8 bg-gray-300"></div>
+            <div className='w-px h-8 bg-gray-300'></div>
             <button
               onClick={handleClear}
-              className="p-3 text-gray-700 rounded-lg hover:bg-gray-100 font-medium transition-all flex items-center gap-2"
-              title="Clear Canvas"
+              className='p-3 text-gray-700 rounded-lg hover:bg-gray-100 font-medium transition-all flex items-center gap-2'
+              title='Clear Canvas'
             >
-              <RotateCcw className="w-5 h-5" />
+              <RotateCcw className='w-5 h-5' />
             </button>
           </div>
         </div>

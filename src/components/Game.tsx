@@ -74,7 +74,7 @@ export default function Game() {
       type: Phaser.AUTO,
       parent: containerRef.current,
       width: 1280,
-      height: 720,
+      height: 640,
       backgroundColor: "#1a1a1a",
       scene: GameScene,
       scale: {
@@ -243,7 +243,7 @@ export default function Game() {
   };
 
   return (
-    <div className='w-full h-screen bg-gray-900 overflow-hidden'>
+    <div className='w-full h-full bg-gray-900 overflow-hidden'>
       {/* 3-column grid layout */}
       <div className='grid grid-cols-[200px_1fr_200px] gap-2 h-full p-2'>
         {/* Left column: Track Switcher */}
@@ -255,10 +255,10 @@ export default function Game() {
         </div>
 
         {/* Center column: Game Canvas */}
-        <div className='flex items-center justify-center overflow-hidden'>
+        <div className='flex items-start justify-center overflow-hidden'>
           <div
             ref={containerRef}
-            className='w-full h-full max-w-full max-h-full'
+            className='w-auto h-auto max-w-[1280px]'
           />
         </div>
 

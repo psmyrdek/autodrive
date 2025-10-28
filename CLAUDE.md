@@ -58,24 +58,27 @@ interface Track {
   startPoint: Point;
   sparseOuterBorder?: Point[]; // Original user-placed points for editing
   sparseInnerBorder?: Point[]; // Original user-placed points for editing
-  texture?: string;            // Optional Gemini-generated texture filename
+  texture?: string;            // Optional AI-generated texture filename
 }
 ```
 
 ### AI Texture Generation
 
-Tracks can optionally have photorealistic textures generated using Replicate API:
+Tracks can optionally have photorealistic textures generated using Runware FLUX Fill API:
 
 **Track Builder** (`src/components/TrackBuilder.tsx` + `src/hooks/useTextureGeneration.ts`):
 - User clicks "Generate Texture" button after completing track outline
-- Hook renders canvas with gray solid track shape (filled area between borders)
-- Sends PNG to backend via `POST /api/tracks/generate-texture`
+- Hook prepares track geometry (outer/inner borders) for backend processing
+- Sends track data to backend via `POST /api/tracks/generate-texture`
 
-**Backend** (`server/gemini.js` + `server/index.js`):
-- Receives track shape image
+**Backend** (`server/fluxInpainter.js` + `server/index.js`):
+- Receives track border points (outer and inner boundaries)
+- Generates base image with track borders overlaid on base texture (`server/maskRenderer.js`)
+- Creates inpainting mask indicating track area to fill (white) vs preserve (black)
 - Loads customizable prompt from `server/prompts/track-texture.js`
-- Calls Replicate API to transform gray track shape into realistic racing circuit texture
-- Saves generated texture to `public/tracks/` directory
+- Calls Runware FLUX Fill API (model: `runware:102@1`) for specialized inpainting
+- API transforms track area into realistic racing circuit texture while preserving borders
+- Saves generated texture (1280x640 PNG) to `public/tracks/` directory
 - Returns texture filename
 
 **Game Rendering** (`src/scenes/GameScene.ts`):
@@ -84,7 +87,7 @@ Tracks can optionally have photorealistic textures generated using Replicate API
 - Always renders track borders (blue outer, red inner) on top of texture
 - Borders ensure collision boundaries are clearly visible
 
-**Setup**: Requires `REPLICATE_API_TOKEN` environment variable. See `docs/TEXTURE_GENERATION.md` for details.
+**Setup**: Requires `RUNWARE_API_KEY` environment variable. Get your API key from https://runware.ai
 
 ### Phaser Integration
 

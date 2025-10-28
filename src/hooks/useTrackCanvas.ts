@@ -1,5 +1,6 @@
 import {useEffect, useRef, RefObject} from "react";
 import type {Point, Obstacle} from "../types/track";
+import {BORDER_COLORS, BORDER_LINE_WIDTH} from "../utils/trackBorderStyles";
 
 const drawSmoothCurve = (
   ctx: CanvasRenderingContext2D,
@@ -51,30 +52,21 @@ const drawPath = (
   ctx: CanvasRenderingContext2D,
   points: Point[],
   color: string,
-  isComplete: boolean,
-  dashed: boolean = false
+  isComplete: boolean
 ) => {
   if (points.length === 0) return;
 
   ctx.strokeStyle = color;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = BORDER_LINE_WIDTH.canvas;
   ctx.fillStyle = color;
+  ctx.setLineDash([]);
 
-  // Set line dash pattern if needed
-  if (dashed) {
-    ctx.setLineDash([10, 5]); // 10px dash, 5px gap
-  } else {
-    ctx.setLineDash([]);
-  }
-
-  // Draw points (only if not dashed)
-  if (!dashed) {
-    points.forEach((point) => {
-      ctx.beginPath();
-      ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
-      ctx.fill();
-    });
-  }
+  // Draw control points
+  points.forEach((point) => {
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
 
   // Draw lines/curves
   if (points.length > 1) {
@@ -93,9 +85,6 @@ const drawPath = (
 
     ctx.stroke();
   }
-
-  // Reset line dash
-  ctx.setLineDash([]);
 };
 
 export interface CanvasRenderOptions {
@@ -194,14 +183,14 @@ export function useTrackCanvas(
     render();
 
     function drawAllElements() {
-      // Draw outer border (white solid)
+      // Draw outer border (solid blue)
       if (outerBorder.length > 0) {
-        drawPath(ctx, outerBorder, "#ffffff", isOuterComplete, false);
+        drawPath(ctx, outerBorder, BORDER_COLORS.canvas.outer, isOuterComplete);
       }
 
-      // Draw inner border (white dashed)
+      // Draw inner border (solid red)
       if (innerBorder.length > 0) {
-        drawPath(ctx, innerBorder, "#ffffff", isInnerComplete, true);
+        drawPath(ctx, innerBorder, BORDER_COLORS.canvas.inner, isInnerComplete);
       }
 
       // Draw start point

@@ -7,6 +7,7 @@ import {RadarSystem} from "../systems/RadarSystem";
 import {TelemetryTracker} from "../systems/TelemetryTracker";
 import {TimerDisplay} from "../systems/TimerDisplay";
 import {AutopilotSystem, type CarState} from "../systems/AutopilotSystem";
+import {BORDER_COLORS, BORDER_LINE_WIDTH} from "../utils/trackBorderStyles";
 
 export default class GameScene extends Phaser.Scene {
   private track: Track | null = null;
@@ -65,7 +66,6 @@ export default class GameScene extends Phaser.Scene {
     pKey?.on("down", () => {
       this.toggleAutopilot();
     });
-
   }
 
   private renderTrack() {
@@ -88,7 +88,11 @@ export default class GameScene extends Phaser.Scene {
     this.drawTrackBorders();
 
     // Always draw obstacles if present (on top of texture or borders)
-    if (this.track.obstacles && this.track.obstacles.length > 0 && this.graphics) {
+    if (
+      this.track.obstacles &&
+      this.track.obstacles.length > 0 &&
+      this.graphics
+    ) {
       this.graphics.lineStyle(5, 0xf97316, 1); // Orange color
       this.track.obstacles.forEach((obstacle) => {
         this.graphics!.beginPath();
@@ -102,14 +106,22 @@ export default class GameScene extends Phaser.Scene {
   private drawTrackBorders() {
     if (!this.graphics || !this.track) return;
 
-    // Draw outer border in blue
-    this.graphics.lineStyle(4, 0x4169e1, 1);
+    // Draw outer border (solid blue)
+    this.graphics.lineStyle(
+      BORDER_LINE_WIDTH.phaser,
+      BORDER_COLORS.phaser.outer,
+      1
+    );
     if (this.track.outerBorder.length > 1) {
       this.drawPath(this.track.outerBorder);
     }
 
-    // Draw inner border in red
-    this.graphics.lineStyle(4, 0xdc143c, 1);
+    // Draw inner border (solid red)
+    this.graphics.lineStyle(
+      BORDER_LINE_WIDTH.phaser,
+      BORDER_COLORS.phaser.inner,
+      1
+    );
     if (this.track.innerBorder.length > 1) {
       this.drawPath(this.track.innerBorder);
     }
@@ -143,15 +155,12 @@ export default class GameScene extends Phaser.Scene {
   }
 
   private displayTexture(textureKey: string) {
-    // Create image at canvas center (1280x720 canvas size)
-    this.trackTextureImage = this.add.image(640, 360, textureKey);
+    this.trackTextureImage = this.add.image(640, 320, textureKey);
 
     // Send to back (below car and other game objects)
     this.trackTextureImage.setDepth(-1);
 
-    // The texture should already be 1280x720 from Gemini
-    // But ensure it scales correctly if needed
-    this.trackTextureImage.setDisplaySize(1280, 720);
+    this.trackTextureImage.setDisplaySize(1280, 640);
   }
 
   private drawPath(points: {x: number; y: number}[]) {
@@ -213,7 +222,10 @@ export default class GameScene extends Phaser.Scene {
     // Only handle input and physics if game is running
     if (this.isRunning) {
       // Start timer and telemetry on first user input or autopilot activation
-      if (!this.hasStarted && (this.inputManager.hasAnyInput() || this.isAutopilotEnabled)) {
+      if (
+        !this.hasStarted &&
+        (this.inputManager.hasAnyInput() || this.isAutopilotEnabled)
+      ) {
         this.hasStarted = true;
         this.startTimer();
       }
@@ -321,31 +333,34 @@ export default class GameScene extends Phaser.Scene {
     // Get control commands from autopilot (async, non-blocking)
     // We use .then() to avoid blocking the game loop
     // CRITICAL: Pass deltaMs for time accumulator (maintains 50ms sampling rate)
-    this.autopilotSystem.getControlCommands(deltaMs, carState).then((commands) => {
-      // Apply commands to car physics (same as manual input would)
-      const speed = this.carPhysics.getSpeed();
+    this.autopilotSystem
+      .getControlCommands(deltaMs, carState)
+      .then((commands) => {
+        // Apply commands to car physics (same as manual input would)
+        const speed = this.carPhysics.getSpeed();
 
-      if (commands.forward) {
-        this.carPhysics.accelerate(deltaSeconds);
-      }
-
-      if (commands.backward) {
-        if (speed > 10) {
-          this.carPhysics.brake();
-        } else {
-          this.carPhysics.reverse(deltaSeconds);
+        if (commands.forward) {
+          this.carPhysics.accelerate(deltaSeconds);
         }
-      }
 
-      if (commands.left && speed > 20) {
-        this.carPhysics.turnLeft(deltaSeconds);
-      }
+        if (commands.backward) {
+          if (speed > 10) {
+            this.carPhysics.brake();
+          } else {
+            this.carPhysics.reverse(deltaSeconds);
+          }
+        }
 
-      if (commands.right && speed > 20) {
-        this.carPhysics.turnRight(deltaSeconds);
-      }
-    }).catch((error) => {
-      console.error("Autopilot error:", error);
-    });
+        if (commands.left && speed > 20) {
+          this.carPhysics.turnLeft(deltaSeconds);
+        }
+
+        if (commands.right && speed > 20) {
+          this.carPhysics.turnRight(deltaSeconds);
+        }
+      })
+      .catch((error) => {
+        console.error("Autopilot error:", error);
+      });
   }
 }

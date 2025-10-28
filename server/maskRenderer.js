@@ -103,27 +103,22 @@ const drawPath = (ctx, points, color, isComplete, dashed = false) => {
   ctx.setLineDash([]);
 };
 
-/**
- * Render a base image with track borders visible
- * This shows the outer and inner borders as dashed white lines on top of the base layer texture
- * @param {Array<{x: number, y: number}>} outerBorder - Outer border points
- * @param {Array<{x: number, y: number}>} innerBorder - Inner border points
- * @param {number} width - Canvas width (default: 1280)
- * @param {number} height - Canvas height (default: 720)
- * @returns {Promise<Buffer>} - PNG buffer of the base image
- */
 export async function renderBordersBaseImage(
   outerBorder,
   innerBorder,
   width = 1280,
-  height = 720
+  height = 640
 ) {
   try {
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext("2d");
 
     // Load and draw the base layer texture
-    const baseLayerPath = path.join(__dirname, "assets", "track-base-layer.png");
+    const baseLayerPath = path.join(
+      __dirname,
+      "assets",
+      "track-base-layer.png"
+    );
     if (!fs.existsSync(baseLayerPath)) {
       throw new Error(
         "Base layer image not found at server/assets/track-base-layer.png"
@@ -153,20 +148,11 @@ export async function renderBordersBaseImage(
   }
 }
 
-/**
- * Render a mask from track points
- * The mask has white track area on black background (for Flux Fill)
- * @param {Array<{x: number, y: number}>} outerBorder - Outer border points
- * @param {Array<{x: number, y: number}>} innerBorder - Inner border points
- * @param {number} width - Canvas width (default: 1280)
- * @param {number} height - Canvas height (default: 720)
- * @returns {Buffer} - PNG buffer of the mask
- */
 export function renderMask(
   outerBorder,
   innerBorder,
   width = 1280,
-  height = 720
+  height = 640
 ) {
   try {
     const canvas = createCanvas(width, height);
@@ -206,6 +192,71 @@ export function renderMask(
     return buffer;
   } catch (error) {
     console.error("Error rendering mask:", error);
+    console.error("Error stack:", error.stack);
+    throw error;
+  }
+}
+
+/**
+ * Render a mask for OpenAI GPT Image API
+ * The mask has transparent (alpha=0) track area where editing should occur,
+ * and opaque everywhere else to preserve borders and outside areas
+ * @param {Array<{x: number, y: number}>} outerBorder - Outer border points
+ * @param {Array<{x: number, y: number}>} innerBorder - Inner border points
+ * @param {number} width - Canvas width (default: 1280)
+ * @param {number} height - Canvas height (default: 720)
+ * @returns {Buffer} - PNG buffer of the mask
+ */
+export function renderMaskForOpenAI(
+  outerBorder,
+  innerBorder,
+  width = 1280,
+  height = 720
+) {
+  try {
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext("2d");
+
+    // Opaque black background (areas to preserve)
+    ctx.fillStyle = "rgba(0, 0, 0, 1)";
+    ctx.fillRect(0, 0, width, height);
+
+    // Fill track area (between borders) with transparent using even-odd fill rule
+    if (outerBorder.length > 2 && innerBorder.length > 2) {
+      // Use destination-out to cut out the track area (make it transparent)
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.fillStyle = "#ffffff"; // Color doesn't matter with destination-out, only alpha
+
+      ctx.beginPath();
+
+      // Draw outer border path (clockwise)
+      ctx.moveTo(outerBorder[0].x, outerBorder[0].y);
+      drawSmoothCurve(ctx, outerBorder, true);
+      ctx.closePath();
+
+      // Draw inner border path (counter-clockwise by reversing)
+      const reversedInner = [...innerBorder].reverse();
+      ctx.moveTo(reversedInner[0].x, reversedInner[0].y);
+      drawSmoothCurve(ctx, reversedInner, true);
+      ctx.closePath();
+
+      // Fill using even-odd rule (creates "donut" shape that's transparent)
+      ctx.fill("evenodd");
+
+      // Reset composite operation
+      ctx.globalCompositeOperation = "source-over";
+    } else {
+      console.warn("Not enough points to draw track:", {
+        outer: outerBorder.length,
+        inner: innerBorder.length,
+      });
+    }
+
+    // Return as PNG buffer
+    const buffer = canvas.toBuffer("image/png");
+    return buffer;
+  } catch (error) {
+    console.error("Error rendering OpenAI mask:", error);
     console.error("Error stack:", error.stack);
     throw error;
   }
