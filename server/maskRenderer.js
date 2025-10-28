@@ -164,7 +164,7 @@ export async function renderBordersBaseImage(
 
 /**
  * Renders border lines guide for ControlNet
- * Creates white border lines on black background (edge detection style)
+ * Creates solid white fill on black background for track area
  * This guides the AI to generate texture while respecting track boundaries
  * @param {Array<{x: number, y: number}>} outerBorder - Outer border points
  * @param {Array<{x: number, y: number}>} innerBorder - Inner border points
@@ -186,26 +186,24 @@ export function renderBordersGuide(
     ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, width, height);
 
-    // Draw white border lines (not filled, just stroked)
+    // Fill track area (between borders) with solid white using even-odd fill rule
     if (outerBorder && outerBorder.length > 2 && innerBorder && innerBorder.length > 2) {
-      ctx.strokeStyle = "#ffffff"; // White lines for borders
-      ctx.lineWidth = 3; // Line thickness for visibility
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-
-      // Draw outer border line
+      ctx.fillStyle = "#ffffff"; // White for track area
       ctx.beginPath();
+
+      // Draw outer border path (clockwise)
       ctx.moveTo(outerBorder[0].x, outerBorder[0].y);
       drawSmoothCurve(ctx, outerBorder, true);
       ctx.closePath();
-      ctx.stroke();
 
-      // Draw inner border line
-      ctx.beginPath();
-      ctx.moveTo(innerBorder[0].x, innerBorder[0].y);
-      drawSmoothCurve(ctx, innerBorder, true);
+      // Draw inner border path (counter-clockwise by reversing)
+      const reversedInner = [...innerBorder].reverse();
+      ctx.moveTo(reversedInner[0].x, reversedInner[0].y);
+      drawSmoothCurve(ctx, reversedInner, true);
       ctx.closePath();
-      ctx.stroke();
+
+      // Fill using even-odd rule (creates solid white "donut" shape)
+      ctx.fill("evenodd");
     }
 
     // Return as PNG buffer

@@ -62,17 +62,17 @@ export function ToolPalette({
         const isActive = currentTool === tool.id;
         const colorClasses = {
           blue: isActive
-            ? "bg-blue-500 text-white shadow-lg ring-2 ring-blue-300"
-            : "bg-white text-blue-600 hover:bg-blue-50",
+            ? "bg-blue-600 text-white shadow-lg ring-2 ring-blue-400"
+            : "bg-gray-700 text-blue-400 hover:bg-gray-600 border-gray-600",
           red: isActive
-            ? "bg-red-500 text-white shadow-lg ring-2 ring-red-300"
-            : "bg-white text-red-600 hover:bg-red-50",
+            ? "bg-red-600 text-white shadow-lg ring-2 ring-red-400"
+            : "bg-gray-700 text-red-400 hover:bg-gray-600 border-gray-600",
           green: isActive
-            ? "bg-green-500 text-white shadow-lg ring-2 ring-green-300"
-            : "bg-white text-green-600 hover:bg-green-50",
+            ? "bg-green-600 text-white shadow-lg ring-2 ring-green-400"
+            : "bg-gray-700 text-green-400 hover:bg-gray-600 border-gray-600",
           orange: isActive
-            ? "bg-orange-500 text-white shadow-lg ring-2 ring-orange-300"
-            : "bg-white text-orange-600 hover:bg-orange-50",
+            ? "bg-orange-600 text-white shadow-lg ring-2 ring-orange-400"
+            : "bg-gray-700 text-orange-400 hover:bg-gray-600 border-gray-600",
         };
 
         return (
@@ -82,7 +82,7 @@ export function ToolPalette({
             disabled={tool.disabled}
             className={`relative p-3 rounded-lg transition-all ${
               colorClasses[tool.color]
-            } disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg border border-gray-200`}
+            } disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg border`}
             title={tool.label}
           >
             <Icon className="w-5 h-5" />

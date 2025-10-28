@@ -34,7 +34,7 @@ export function SavePanel({
     <div className="flex items-center gap-2">
       <button
         onClick={onSave}
-        className="p-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all shadow-md hover:shadow-lg"
+        className="p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all shadow-md hover:shadow-lg"
         title="Save Track"
       >
         <Save className="w-5 h-5" />
@@ -60,25 +60,25 @@ export function SavePanel({
       </button>
 
       {textureError && (
-        <div className="absolute top-full mt-2 right-0 bg-red-50 border border-red-200 rounded px-2 py-1">
-          <p className="text-xs text-red-600 whitespace-nowrap">Generation failed</p>
+        <div className="absolute top-full mt-2 right-0 bg-red-900 border border-red-700 rounded px-2 py-1">
+          <p className="text-xs text-red-200 whitespace-nowrap">Generation failed</p>
         </div>
       )}
 
       <div className="relative">
         <button
           onClick={() => setShowTracks(!showTracks)}
-          className="p-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all shadow-md"
+          className="p-3 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-all shadow-md border border-gray-600"
           title="Load Track"
         >
           <FolderOpen className="w-5 h-5" />
         </button>
 
         {showTracks && (
-          <div className="absolute top-full mt-2 right-0 w-64 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden">
+          <div className="absolute top-full mt-2 right-0 w-64 bg-gray-800 rounded-lg shadow-xl border border-gray-700 overflow-hidden z-50">
             <div className="max-h-64 overflow-y-auto p-2 space-y-1">
               {tracks.length === 0 ? (
-                <p className="text-xs text-gray-400 text-center py-4">
+                <p className="text-xs text-gray-500 text-center py-4">
                   No saved tracks
                 </p>
               ) : (
@@ -89,7 +89,7 @@ export function SavePanel({
                       onLoadTrack(track.name);
                       setShowTracks(false);
                     }}
-                    className="w-full px-3 py-2 text-sm text-left bg-white hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded transition-all"
+                    className="w-full px-3 py-2 text-sm text-left text-gray-200 bg-gray-700 hover:bg-blue-600 border border-gray-600 hover:border-blue-500 rounded transition-all"
                   >
                     {track.name}
                   </button>

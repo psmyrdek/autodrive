@@ -20,9 +20,9 @@ const __dirname = path.dirname(__filename);
 const CONTROLNET_CONFIG = {
   model: "runware:25@1", // ControlNet model
   weight: 0.8, //0.6, // How strongly the ControlNet guide influences generation (0-1)
-  threshold: 0.85,
+  threshold: 0.95, // 0.95
   startStepPercentage: 0, // When to start applying ControlNet (0 = from beginning)
-  endStepPercentage: 80, //85, // When to stop applying ControlNet (85 = apply for 85% of steps)
+  endStepPercentage: 70, //85, // When to stop applying ControlNet (85 = apply for 85% of steps)
   controlMode: "balanced", // Balance between prompt and control
 };
 
@@ -34,7 +34,7 @@ const GENERATION_CONFIG = {
   width: 1280,
   height: 640,
   steps: 28,
-  CFGScale: 7,
+  CFGScale: 8,
   outputFormat: "PNG",
   outputType: "base64Data",
   numberResults: 1,
@@ -46,6 +46,7 @@ const GENERATION_CONFIG = {
 const PATHS = {
   requests: path.join(__dirname, "requests"),
   publicTracks: path.join(__dirname, "..", "public", "tracks"),
+  logs: path.join(__dirname, "log"),
 };
 
 // ============================================================================
@@ -61,6 +62,9 @@ function ensureDirectoriesExist() {
   }
   if (!fs.existsSync(PATHS.publicTracks)) {
     fs.mkdirSync(PATHS.publicTracks, {recursive: true});
+  }
+  if (!fs.existsSync(PATHS.logs)) {
+    fs.mkdirSync(PATHS.logs, {recursive: true});
   }
 }
 
@@ -92,12 +96,13 @@ function saveJSON(data, filePath) {
 }
 
 /**
- * Generate filename for texture (without timestamp for overwriting)
+ * Generate filename for texture (with timestamp to prevent overwriting)
  * @param {string} sanitizedName - Sanitized track name
  * @returns {string} - Generated filename
  */
 function generateTextureFilename(sanitizedName) {
-  return `${sanitizedName}.png`;
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  return `${sanitizedName}_${timestamp}.png`;
 }
 
 // ============================================================================
@@ -186,6 +191,14 @@ export async function generateTrackTexture(
     // White border lines on black background (edge detection style)
     const bordersGuideBuffer = renderBordersGuide(outerBorder, innerBorder);
     const guideDataUri = createBase64DataUri(bordersGuideBuffer);
+
+    // Log guide image for debugging
+    const guideLogPath = path.join(
+      PATHS.logs,
+      `guide_${sanitizedName}_${Date.now()}.png`
+    );
+    saveBuffer(bordersGuideBuffer, guideLogPath);
+    console.log(`Saved guide image to: ${guideLogPath}`);
 
     // Step 2: Generate texture
     console.log(`Generating texture for "${trackName}"...`);

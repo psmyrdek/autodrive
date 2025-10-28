@@ -17,6 +17,7 @@ export interface TextureGenerationHandlers {
     isInnerComplete: boolean
   ) => Promise<string | null>;
   clearTexture: () => void;
+  setTexture: (texture: string | null) => void;
 }
 
 /**
@@ -182,6 +183,11 @@ export function useTextureGeneration() {
     setError(null);
   };
 
+  const setTexture = (texture: string | null) => {
+    setGeneratedTexture(texture);
+    setError(null);
+  };
+
   const state: TextureGenerationState = {
     generatedTexture,
     isGenerating,
@@ -191,6 +197,7 @@ export function useTextureGeneration() {
   const handlers: TextureGenerationHandlers = {
     generateTexture,
     clearTexture,
+    setTexture,
   };
 
   return {state, handlers};
