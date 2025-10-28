@@ -64,27 +64,28 @@ interface Track {
 
 ### AI Texture Generation
 
-Tracks can optionally have photorealistic textures generated using Runware FLUX Fill API:
+Tracks can optionally have photorealistic textures generated using Runware FLUX with ControlNet:
 
 **Track Builder** (`src/components/TrackBuilder.tsx` + `src/hooks/useTextureGeneration.ts`):
 - User clicks "Generate Texture" button after completing track outline
 - Hook prepares track geometry (outer/inner borders) for backend processing
 - Sends track data to backend via `POST /api/tracks/generate-texture`
 
-**Backend** (`server/fluxInpainter.js` + `server/index.js`):
+**Backend** (`server/fluxInpainter.js` + `server/maskRenderer.js`):
 - Receives track border points (outer and inner boundaries)
-- Generates base image with track borders overlaid on base texture (`server/maskRenderer.js`)
-- Creates inpainting mask indicating track area to fill (white) vs preserve (black)
+- Generates ControlNet guide image locally using `renderBordersGuide()`: white border lines on black background (edge detection style)
+- This replaces external ControlNet preprocessing - guide is generated directly from track data
 - Loads customizable prompt from `server/prompts/track-texture.js`
-- Calls Runware FLUX Fill API (model: `runware:102@1`) for specialized inpainting
-- API transforms track area into realistic racing circuit texture while preserving borders
+- Calls Runware FLUX with ControlNet (model: `runware:101@1`, controlnet: `runware:25@1`)
+- ControlNet parameters: weight=0.6, threshold=0.85, endStep=85%, steps=30, CFG=8.0
+- The guide structures the generation while allowing edge-to-edge texture fill
 - Saves generated texture (1280x640 PNG) to `public/tracks/` directory
 - Returns texture filename
 
 **Game Rendering** (`src/scenes/GameScene.ts`):
 - If track has `texture` field, dynamically loads texture image
 - Displays texture at depth -1 (behind all other elements)
-- Always renders track borders (blue outer, red inner) on top of texture
+- Always renders track borders (flashy cyan outer, flashy orange inner) on top of texture
 - Borders ensure collision boundaries are clearly visible
 
 **Setup**: Requires `RUNWARE_API_KEY` environment variable. Get your API key from https://runware.ai

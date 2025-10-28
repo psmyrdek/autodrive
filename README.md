@@ -9,7 +9,7 @@ A 2D driving game with a **trainable autopilot** powered by neural networks. Cre
 - **Trainable Autopilot**: GRU-based neural network learns to drive from your telemetry data
 - **Playable Game**: Drive a car around custom tracks with arcade-style physics
 - **Track Builder**: Visual canvas-based editor for creating custom racing tracks
-- **AI Texture Generation**: Generate photorealistic track textures using Runware FLUX Fill API
+- **AI Texture Generation**: Generate photorealistic track textures using Runware FLUX with ControlNet guidance
 - **Distance Sensors**: Three radar rays detect obstacles and track boundaries
 - **Telemetry Collection**: Record gameplay data (inputs, sensor readings) for training the autopilot
 - **Timer**: Track your lap times and performance
@@ -65,6 +65,9 @@ npm run dev:server   # Backend only
 - Requires `RUNWARE_API_KEY` environment variable
 - Get your API key from https://runware.ai
 - Add to `.env` file: `RUNWARE_API_KEY=your_key_here`
+- Uses FLUX model with ControlNet for structure-guided generation
+- Generates photorealistic racing circuit textures that respect track boundaries
+- ControlNet guide is generated locally from track borders (no external preprocessing)
 
 ## Training Your Own Autopilot Model
 

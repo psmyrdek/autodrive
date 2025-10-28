@@ -113,19 +113,9 @@ export function useTrackCanvas(
     textureUrl,
   } = options;
 
-  // Cache loaded images to prevent re-loading on every render
-  const baseLayerImgRef = useRef<HTMLImageElement | null>(null);
+  // Cache loaded texture image to prevent re-loading on every render
   const textureImgRef = useRef<HTMLImageElement | null>(null);
   const currentTextureUrlRef = useRef<string | null>(null);
-
-  // Load base layer image once
-  useEffect(() => {
-    if (!baseLayerImgRef.current) {
-      const img = new Image();
-      img.src = "/server/assets/track-base-layer.png";
-      baseLayerImgRef.current = img;
-    }
-  }, []);
 
   // Load texture image when textureUrl changes
   useEffect(() => {
@@ -148,21 +138,11 @@ export function useTrackCanvas(
     if (!ctx) return;
 
     const render = () => {
-      // Clear canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Clear canvas to white background
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw base layer if loaded
-      if (baseLayerImgRef.current?.complete) {
-        ctx.drawImage(
-          baseLayerImgRef.current,
-          0,
-          0,
-          canvas.width,
-          canvas.height
-        );
-      }
-
-      // Draw generated texture if loaded
+      // Draw generated texture if loaded (replaces base layer)
       if (textureImgRef.current?.complete) {
         ctx.drawImage(textureImgRef.current, 0, 0, canvas.width, canvas.height);
       }
@@ -171,10 +151,7 @@ export function useTrackCanvas(
       drawAllElements();
     };
 
-    // Set up image load listeners if images aren't loaded yet
-    if (baseLayerImgRef.current && !baseLayerImgRef.current.complete) {
-      baseLayerImgRef.current.onload = render;
-    }
+    // Set up image load listener if texture isn't loaded yet
     if (textureImgRef.current && !textureImgRef.current.complete) {
       textureImgRef.current.onload = render;
     }

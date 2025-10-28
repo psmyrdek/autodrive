@@ -1,5 +1,5 @@
 import {useRef} from "react";
-import {RotateCcw} from "lucide-react";
+import {RotateCcw, Sparkles, Wand2} from "lucide-react";
 import {useTrackDrawing} from "../hooks/useTrackDrawing";
 import {useTrackCanvas} from "../hooks/useTrackCanvas";
 import {useTrackPersistence} from "../hooks/useTrackPersistence";
@@ -113,6 +113,38 @@ export default function TrackBuilder() {
           onDoubleClick={handleCanvasDoubleClick}
           className='bg-white cursor-crosshair shadow-2xl'
         />
+
+        {/* Loading Overlay for AI Texture Generation */}
+        {textureState.isGenerating && (
+          <div className='absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm'>
+            <div className='bg-gradient-to-br from-purple-600 via-purple-700 to-indigo-700 rounded-2xl shadow-2xl p-8 border-2 border-purple-400/30'>
+              <div className='flex flex-col items-center gap-6'>
+                {/* Animated Icons */}
+                <div className='relative w-24 h-24'>
+                  <Sparkles className='w-24 h-24 text-yellow-300 absolute animate-ping' />
+                  <Wand2 className='w-24 h-24 text-white absolute animate-pulse' />
+                </div>
+
+                {/* Loading Text */}
+                <div className='flex flex-col items-center gap-2'>
+                  <h3 className='text-2xl font-bold text-white'>
+                    Generating AI Texture
+                  </h3>
+                  <p className='text-purple-200 text-sm'>
+                    Creating photorealistic track texture...
+                  </p>
+                </div>
+
+                {/* Progress Dots */}
+                <div className='flex gap-2'>
+                  <div className='w-3 h-3 bg-purple-300 rounded-full animate-bounce [animation-delay:0ms]'></div>
+                  <div className='w-3 h-3 bg-purple-300 rounded-full animate-bounce [animation-delay:150ms]'></div>
+                  <div className='w-3 h-3 bg-purple-300 rounded-full animate-bounce [animation-delay:300ms]'></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Top Center - Track Name & Save Panel */}

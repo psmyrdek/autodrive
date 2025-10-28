@@ -1,6 +1,5 @@
 export const TRACK_TEXTURE_PROMPT = `
-Top-down aerial photo of a lush summer meadow with subtle elevation changes, captured in soft afternoon sunlight.
-Inpaint a realistic asphalt race track carved into the grass, following a flowing S-shaped layout with two sweeping turns and a short straightaway.
-Track edges are crisp and slightly raised, bordered by short, well-manicured grass and faint tire marks blending into the meadow texture.
-Surface shows fine aggregate detail, light matte reflections, and consistent directionality, with no cars, people, or signage.
-Surrounding grass remains untouched, vibrant, and seamless; lighting stays natural with gentle shadows and no dramatic contrasts.`;
+top-down orthographic 2D racing game map, urban night street circuit inspired by monaco/singapore, dense waterfront skyline and marina, tight streets with chicanes and hairpins, the racetrack exactly follows the provided control map, smooth dark wet asphalt with glossy reflections, solid outer white lines and a dashed center line, red-white curbs at apexes, Armco/TecPro safety barriers hugging corners, subtle rubber build-up on the racing line, overhead streetlights and under-bridge sections indicated by darker overlays (no perspective), neon city glow casting colored reflections onto road and nearby water, clean vector-like shapes with soft film-grain and simple blob shadows, readable silhouettes and high gameplay clarity, buildings as simplified blocky footprints with lighted roofs/edges, marina with yachts and piers, planter islands, crash fences, muted ambient fog glow, cohesive neon palette (asphalt #1E1E1F, concrete #3A3A3C, water #0A2A3F, neon magenta #FF2BD5, cyan #00E5FF, amber #F2C14E), no text or numbers or logos, no vehicles or crowds, no dramatic 3D perspective, game-ready clarity and composition
+
+
+`;

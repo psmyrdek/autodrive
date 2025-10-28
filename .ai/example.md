@@ -1,3 +1,8 @@
+# Example request
+
+Below is an example request to edit an image using the Google Gen AI API.
+
+```javascript
 /**
  * @license
  * Copyright 2025 Google LLC
@@ -76,3 +81,4 @@ async function main() {
 }
 
 main();
+```

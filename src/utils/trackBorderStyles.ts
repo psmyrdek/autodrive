@@ -1,7 +1,7 @@
 /**
  * Unified track border styling for both TrackBuilder and GameScene
- * - Outer border: Solid blue
- * - Inner border: Solid red
+ * - Outer border: Flashy blue
+ * - Inner border: Flashy orange
  */
 
 export interface TrackBorderColors {
@@ -17,17 +17,17 @@ export interface TrackBorderColors {
 
 /**
  * Unified border colors
- * - Outer: Blue (royal blue)
- * - Inner: Red (crimson)
+ * - Outer: Flashy blue (cyan)
+ * - Inner: Flashy orange
  */
 export const BORDER_COLORS: TrackBorderColors = {
   canvas: {
-    outer: "#4a5568", // Dark gray
-    inner: "#4a5568", // Dark gray
+    outer: "#00d9ff", // Flashy cyan/blue
+    inner: "#ff6600", // Flashy orange
   },
   phaser: {
-    outer: 0x4a5568, // Dark gray
-    inner: 0x4a5568, // Dark gray
+    outer: 0x00d9ff, // Flashy cyan/blue
+    inner: 0xff6600, // Flashy orange
   },
 };
 
@@ -35,6 +35,6 @@ export const BORDER_COLORS: TrackBorderColors = {
  * Line width constants
  */
 export const BORDER_LINE_WIDTH = {
-  canvas: 3,
-  phaser: 4,
+  canvas: 5,
+  phaser: 6,
 } as const;

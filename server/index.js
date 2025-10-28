@@ -3,7 +3,10 @@ import fs from "fs/promises";
 import path from "path";
 import {fileURLToPath} from "url";
 import multer from "multer";
-import {generateTrackTexture, deleteTrackTexture} from "./fluxInpainter.js";
+import {
+  generateTrackTexture,
+  deleteTrackTexture,
+} from "./trackTextureGenerator.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

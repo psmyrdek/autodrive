@@ -62,7 +62,7 @@ const drawPath = (ctx, points, color, isComplete, dashed = false) => {
   if (points.length === 0) return;
 
   ctx.strokeStyle = color;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 9; // 3x thicker (was 3, now 9)
   ctx.fillStyle = color;
 
   // Set line dash pattern if needed
@@ -128,14 +128,28 @@ export async function renderBordersBaseImage(
     const baseImage = await loadImage(baseLayerPath);
     ctx.drawImage(baseImage, 0, 0, width, height);
 
-    // Draw outer border (solid white)
-    if (outerBorder && outerBorder.length > 0) {
-      drawPath(ctx, outerBorder, "#ffffff", true, false);
-    }
+    // Draw gray fill at 80% opacity between borders (track area)
+    if (outerBorder && outerBorder.length > 2 && innerBorder && innerBorder.length > 2) {
+      ctx.globalAlpha = 0.8;
+      ctx.fillStyle = "#808080"; // Gray color
+      ctx.beginPath();
 
-    // Draw inner border (dashed white)
-    if (innerBorder && innerBorder.length > 0) {
-      drawPath(ctx, innerBorder, "#ffffff", true, true);
+      // Draw outer border path (clockwise)
+      ctx.moveTo(outerBorder[0].x, outerBorder[0].y);
+      drawSmoothCurve(ctx, outerBorder, true);
+      ctx.closePath();
+
+      // Draw inner border path (counter-clockwise by reversing)
+      const reversedInner = [...innerBorder].reverse();
+      ctx.moveTo(reversedInner[0].x, reversedInner[0].y);
+      drawSmoothCurve(ctx, reversedInner, true);
+      ctx.closePath();
+
+      // Fill using even-odd rule (creates "donut" shape)
+      ctx.fill("evenodd");
+
+      // Reset opacity
+      ctx.globalAlpha = 1.0;
     }
 
     // Return as PNG buffer
@@ -143,6 +157,62 @@ export async function renderBordersBaseImage(
     return buffer;
   } catch (error) {
     console.error("Error rendering borders base image:", error);
+    console.error("Error stack:", error.stack);
+    throw error;
+  }
+}
+
+/**
+ * Renders border lines guide for ControlNet
+ * Creates white border lines on black background (edge detection style)
+ * This guides the AI to generate texture while respecting track boundaries
+ * @param {Array<{x: number, y: number}>} outerBorder - Outer border points
+ * @param {Array<{x: number, y: number}>} innerBorder - Inner border points
+ * @param {number} width - Canvas width (default: 1280)
+ * @param {number} height - Canvas height (default: 640)
+ * @returns {Buffer} - PNG buffer of the border lines guide
+ */
+export function renderBordersGuide(
+  outerBorder,
+  innerBorder,
+  width = 1280,
+  height = 640
+) {
+  try {
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext("2d");
+
+    // Black background
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, width, height);
+
+    // Draw white border lines (not filled, just stroked)
+    if (outerBorder && outerBorder.length > 2 && innerBorder && innerBorder.length > 2) {
+      ctx.strokeStyle = "#ffffff"; // White lines for borders
+      ctx.lineWidth = 3; // Line thickness for visibility
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      // Draw outer border line
+      ctx.beginPath();
+      ctx.moveTo(outerBorder[0].x, outerBorder[0].y);
+      drawSmoothCurve(ctx, outerBorder, true);
+      ctx.closePath();
+      ctx.stroke();
+
+      // Draw inner border line
+      ctx.beginPath();
+      ctx.moveTo(innerBorder[0].x, innerBorder[0].y);
+      drawSmoothCurve(ctx, innerBorder, true);
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    // Return as PNG buffer
+    const buffer = canvas.toBuffer("image/png");
+    return buffer;
+  } catch (error) {
+    console.error("Error rendering borders guide image:", error);
     console.error("Error stack:", error.stack);
     throw error;
   }
@@ -167,12 +237,12 @@ export function renderMask(
       ctx.fillStyle = "#ffffff"; // White for track area
       ctx.beginPath();
 
-      // Draw outer border path (clockwise)
+      // Draw outer border path (clockwise) - exact points
       ctx.moveTo(outerBorder[0].x, outerBorder[0].y);
       drawSmoothCurve(ctx, outerBorder, true);
       ctx.closePath();
 
-      // Draw inner border path (counter-clockwise by reversing)
+      // Draw inner border path (counter-clockwise by reversing) - exact points
       const reversedInner = [...innerBorder].reverse();
       ctx.moveTo(reversedInner[0].x, reversedInner[0].y);
       drawSmoothCurve(ctx, reversedInner, true);
@@ -196,6 +266,7 @@ export function renderMask(
     throw error;
   }
 }
+
 
 /**
  * Render a mask for OpenAI GPT Image API
