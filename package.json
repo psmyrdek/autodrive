@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:server": "nodemon server/index.js",
+    "dev:server": "node --watch server/index.js",
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:server\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
@@ -20,7 +20,6 @@
     "express": "^4.18.2",
     "lucide-react": "^0.548.0",
     "multer": "^2.0.2",
-    "nodemon": "^3.1.10",
     "openai": "^6.7.0",
     "phaser": "^3.90.0",
     "react": "^19.1.1",

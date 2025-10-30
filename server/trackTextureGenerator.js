@@ -4,7 +4,10 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import {fileURLToPath} from "node:url";
 import {renderBordersGuide} from "./maskRenderer.js";
-import {TRACK_TEXTURE_PROMPT} from "./prompts/track-texture.js";
+import {
+  TRACK_TEXTURE_PROMPT,
+  TRACK_TEXTURE_NEGATIVE,
+} from "./prompts/track-texture.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,39 +17,55 @@ const __dirname = path.dirname(__filename);
 // ============================================================================
 
 /**
- * ControlNet configuration for FLUX image generation
- * These parameters control how the guide image influences the generation
+ * Configuration for track texture generation
+ * Based on variation_1 parameters - most consistent results
+ *
+ * CRITICAL BALANCE: ControlNet weight + endStep vs CFG Scale
+ * - Too high weight/endStep = edges perfect but prompt ignored (random images)
+ * - Too low weight/endStep = prompt followed but edges lousy
+ * - Sweet spot: weight=0.68, endStep=72%, CFG=9.8
  */
-const CONTROLNET_CONFIG = {
-  model: "runware:25@1", // ControlNet model
-  weight: 0.8, //0.6, // How strongly the ControlNet guide influences generation (0-1)
-  threshold: 0.95, // 0.95
-  startStepPercentage: 0, // When to start applying ControlNet (0 = from beginning)
-  endStepPercentage: 70, //85, // When to stop applying ControlNet (85 = apply for 85% of steps)
-  controlMode: "balanced", // Balance between prompt and control
+const GENERATION_CONFIG = {
+  name: "Track Texture",
+  controlNet: {
+    weight: 0.68, // Proven sweet spot - good structure without suppressing prompt
+    threshold: 0.79, // Edge sensitivity
+    startStepPercentage: 0,
+    endStepPercentage: 72, // Control through 72% of generation
+    controlMode: "prompt", // Prioritize prompt over pure structure
+  },
+  generation: {
+    steps: 43, // Optimal refinement steps
+    CFGScale: 9.8, // Strong prompt adherence
+  },
 };
 
 /**
- * FLUX model generation parameters
+ * Base FLUX generation configuration (non-parametrized values)
  */
-const GENERATION_CONFIG = {
+const GENERATION_BASE = {
   model: "runware:101@1", // FLUX model
   width: 1280,
   height: 640,
-  steps: 28,
-  CFGScale: 8,
   outputFormat: "PNG",
   outputType: "base64Data",
   numberResults: 1,
 };
 
 /**
+ * Base ControlNet configuration (non-parametrized values)
+ */
+const CONTROLNET_BASE = {
+  model: "runware:27@1", // ControlNet model
+  width: 1280,
+  height: 640,
+};
+
+/**
  * Directory paths for file operations
  */
 const PATHS = {
-  requests: path.join(__dirname, "requests"),
   publicTracks: path.join(__dirname, "..", "public", "tracks"),
-  logs: path.join(__dirname, "log"),
 };
 
 // ============================================================================
@@ -57,14 +76,8 @@ const PATHS = {
  * Ensure required directories exist
  */
 function ensureDirectoriesExist() {
-  if (!fs.existsSync(PATHS.requests)) {
-    fs.mkdirSync(PATHS.requests, {recursive: true});
-  }
   if (!fs.existsSync(PATHS.publicTracks)) {
     fs.mkdirSync(PATHS.publicTracks, {recursive: true});
-  }
-  if (!fs.existsSync(PATHS.logs)) {
-    fs.mkdirSync(PATHS.logs, {recursive: true});
   }
 }
 
@@ -84,15 +97,6 @@ function sanitizeTrackName(trackName) {
  */
 function saveBuffer(buffer, filePath) {
   fs.writeFileSync(filePath, buffer);
-}
-
-/**
- * Save JSON data to file
- * @param {Object} data - JSON data to save
- * @param {string} filePath - Full path where to save the file
- */
-function saveJSON(data, filePath) {
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
 }
 
 /**
@@ -132,25 +136,26 @@ function validateApiKey() {
 function buildRunwareRequest(guideDataUri) {
   return {
     positivePrompt: TRACK_TEXTURE_PROMPT,
-    model: GENERATION_CONFIG.model,
+    negativePrompt: TRACK_TEXTURE_NEGATIVE,
+    model: GENERATION_BASE.model,
     controlNet: [
       {
-        model: CONTROLNET_CONFIG.model,
+        model: CONTROLNET_BASE.model,
         guideImage: guideDataUri,
-        weight: CONTROLNET_CONFIG.weight,
-        threshold: CONTROLNET_CONFIG.threshold,
-        startStepPercentage: CONTROLNET_CONFIG.startStepPercentage,
-        endStepPercentage: CONTROLNET_CONFIG.endStepPercentage,
-        controlMode: CONTROLNET_CONFIG.controlMode,
+        weight: GENERATION_CONFIG.controlNet.weight,
+        threshold: GENERATION_CONFIG.controlNet.threshold,
+        startStepPercentage: GENERATION_CONFIG.controlNet.startStepPercentage,
+        endStepPercentage: GENERATION_CONFIG.controlNet.endStepPercentage,
+        controlMode: GENERATION_CONFIG.controlNet.controlMode,
       },
     ],
-    width: GENERATION_CONFIG.width,
-    height: GENERATION_CONFIG.height,
-    steps: GENERATION_CONFIG.steps,
-    CFGScale: GENERATION_CONFIG.CFGScale,
-    outputFormat: GENERATION_CONFIG.outputFormat,
-    outputType: GENERATION_CONFIG.outputType,
-    numberResults: GENERATION_CONFIG.numberResults,
+    width: GENERATION_BASE.width,
+    height: GENERATION_BASE.height,
+    steps: GENERATION_CONFIG.generation.steps,
+    CFGScale: GENERATION_CONFIG.generation.CFGScale,
+    outputFormat: GENERATION_BASE.outputFormat,
+    outputType: GENERATION_BASE.outputType,
+    numberResults: GENERATION_BASE.numberResults,
   };
 }
 
@@ -163,10 +168,13 @@ function buildRunwareRequest(guideDataUri) {
  * Uses track borders as structural guides by generating white border lines on
  * black background (edge detection style) instead of external ControlNet preprocessing.
  * This enables edge-to-edge texture generation while maintaining track boundaries.
+ *
+ * Uses proven configuration: weight=0.68, endStep=72%, CFG=9.8 (most consistent results)
+ *
  * @param {Array<{x: number, y: number}>} outerBorder - Outer border points
  * @param {Array<{x: number, y: number}>} innerBorder - Inner border points
  * @param {string} trackName - Name of the track (used for filename)
- * @returns {Promise<string>} - Filename of the generated texture
+ * @returns {Promise<string>} - Filename of generated texture
  */
 export async function generateTrackTexture(
   outerBorder,
@@ -189,19 +197,20 @@ export async function generateTrackTexture(
 
     // Step 1: Generate ControlNet guide image locally
     // White border lines on black background (edge detection style)
+    console.log(`\n🎨 Generating texture for "${trackName}"...`);
+    console.log("📐 Creating ControlNet guide from track borders...");
     const bordersGuideBuffer = renderBordersGuide(outerBorder, innerBorder);
     const guideDataUri = createBase64DataUri(bordersGuideBuffer);
 
-    // Log guide image for debugging
-    const guideLogPath = path.join(
-      PATHS.logs,
-      `guide_${sanitizedName}_${Date.now()}.png`
-    );
-    saveBuffer(bordersGuideBuffer, guideLogPath);
-    console.log(`Saved guide image to: ${guideLogPath}`);
-
     // Step 2: Generate texture
-    console.log(`Generating texture for "${trackName}"...`);
+    console.log(`\n🔄 Generating with ${GENERATION_CONFIG.name}...`);
+    console.log(
+      `   ControlNet: weight=${GENERATION_CONFIG.controlNet.weight}, threshold=${GENERATION_CONFIG.controlNet.threshold}, endStep=${GENERATION_CONFIG.controlNet.endStepPercentage}%`
+    );
+    console.log(
+      `   Generation: steps=${GENERATION_CONFIG.generation.steps}, CFG=${GENERATION_CONFIG.generation.CFGScale}`
+    );
+
     const requestConfig = buildRunwareRequest(guideDataUri);
     const result = await runware.requestImages(requestConfig);
 
@@ -210,9 +219,12 @@ export async function generateTrackTexture(
     const textureBuffer = Buffer.from(result[0].imageBase64Data, "base64");
     saveGeneratedTexture(textureBuffer, filename);
 
+    console.log(`\n✨ Texture generated successfully!`);
+    console.log(`   Saved: ${filename}`);
+
     return filename;
   } catch (error) {
-    console.error("Error generating texture with Runware:", error);
+    console.error("\n❌ Error generating texture with Runware:", error);
     throw new Error(`Failed to generate texture: ${error.message}`);
   }
 }

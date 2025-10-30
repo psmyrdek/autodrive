@@ -1,2 +1,7 @@
 export const TRACK_TEXTURE_PROMPT = `
-Top-down 2D racing game simulator track, np racing circuit, asphalt road with painted racing lines, game-ready clarity and composition, high quality, aerial view, bright daylight, rolling hills, green fields, scattered trees, rural landscape, farmland in distance, clean empty track, no cars, no vehicles, no people, racing game style`;
+Aerial top-down view of asphalt race track, dark gray racing surface, red and white striped curbs at edges, professional motorsport circuit, clean pavement texture, guard rails alongside track, tire barriers, bright daylight, sharp shadows, realistic photo
+`;
+
+export const TRACK_TEXTURE_NEGATIVE = `
+no track, no road, no asphalt, buildings on track, grass on track, water, forest, nature scene, parking lot, highway, street, sidewalk, monochrome, grayscale, low contrast, fog, night, motion blur, text, logos, watermark, people, crowd, cars, vehicles, debris, damaged, rain, snow, lowres, jpeg artifacts, cartoon, 3d render, digital art, painting
+`;

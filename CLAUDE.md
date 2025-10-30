@@ -195,3 +195,4 @@ Both Track Builder canvas and Game use **1280x720 resolution** for 1:1 coordinat
 - react-router-dom 7.9.4 (routing)
 - Express 4.18.2 (backend)
 - Concurrently 8.2.2 (run multiple servers)
+- Do not create summarization markdown files as docs
