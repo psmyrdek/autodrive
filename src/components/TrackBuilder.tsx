@@ -32,21 +32,31 @@ export default function TrackBuilder() {
     isOuterComplete: drawingState.isOuterComplete,
     isInnerComplete: drawingState.isInnerComplete,
     textureUrl: textureState.generatedTexture,
+    centerline: drawingState.centerline,
+    isDrawing: drawingState.isDrawing,
+    trackWidth: drawingState.trackWidth,
   });
 
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const getCanvasCoordinates = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) return null;
 
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-
-    drawingHandlers.handleCanvasClick(x, y);
+    return {x, y};
   };
 
-  const handleCanvasDoubleClick = () => {
-    drawingHandlers.handleCanvasDoubleClick();
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const coords = getCanvasCoordinates(e);
+    if (!coords) return;
+    drawingHandlers.handleCanvasClick(coords.x, coords.y);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const coords = getCanvasCoordinates(e);
+    if (!coords) return;
+    drawingHandlers.handleMouseMove(coords.x, coords.y);
   };
 
   const handleGenerateTexture = async () => {
@@ -75,9 +85,7 @@ export default function TrackBuilder() {
       drawingState.isInnerComplete,
       textureState.generatedTexture,
       () => {
-        drawingHandlers.clear();
-        setTrackName("");
-        textureHandlers.clearTexture();
+        // Success - canvas remains intact, user can continue editing
       }
     );
   };
@@ -114,7 +122,7 @@ export default function TrackBuilder() {
           width={1280}
           height={640}
           onClick={handleCanvasClick}
-          onDoubleClick={handleCanvasDoubleClick}
+          onMouseMove={handleMouseMove}
           className='bg-white cursor-crosshair shadow-2xl'
         />
 

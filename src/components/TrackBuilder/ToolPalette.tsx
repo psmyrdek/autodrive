@@ -1,14 +1,12 @@
-import {Circle, Square, MapPin, Hexagon} from "lucide-react";
+import {Pencil, MapPin, Hexagon} from "lucide-react";
 
 interface ToolPaletteProps {
-  currentTool: "outer-border" | "inner-border" | "start-point" | "obstacles";
+  currentTool: "drag-line" | "start-point" | "obstacles";
   isOuterComplete: boolean;
   isInnerComplete: boolean;
   startPoint: {x: number; y: number} | null;
   obstaclesCount: number;
-  onSelectTool: (
-    tool: "outer-border" | "inner-border" | "start-point" | "obstacles"
-  ) => void;
+  onSelectTool: (tool: "drag-line" | "start-point" | "obstacles") => void;
 }
 
 export function ToolPalette({
@@ -21,20 +19,12 @@ export function ToolPalette({
 }: ToolPaletteProps) {
   const tools = [
     {
-      id: "outer-border" as const,
-      icon: Square,
-      label: "Outer (Out)",
-      color: "blue",
-      disabled: isOuterComplete,
-      completed: isOuterComplete,
-    },
-    {
-      id: "inner-border" as const,
-      icon: Square,
-      label: "Inner (In)",
-      color: "red",
-      disabled: isInnerComplete,
-      completed: isInnerComplete,
+      id: "drag-line" as const,
+      icon: Pencil,
+      label: "Draw Track",
+      color: "purple",
+      disabled: isOuterComplete && isInnerComplete,
+      completed: isOuterComplete && isInnerComplete,
     },
     {
       id: "start-point" as const,
@@ -61,12 +51,9 @@ export function ToolPalette({
         const Icon = tool.icon;
         const isActive = currentTool === tool.id;
         const colorClasses = {
-          blue: isActive
-            ? "bg-blue-600 text-white shadow-lg ring-2 ring-blue-400"
-            : "bg-gray-700 text-blue-400 hover:bg-gray-600 border-gray-600",
-          red: isActive
-            ? "bg-red-600 text-white shadow-lg ring-2 ring-red-400"
-            : "bg-gray-700 text-red-400 hover:bg-gray-600 border-gray-600",
+          purple: isActive
+            ? "bg-purple-600 text-white shadow-lg ring-2 ring-purple-400"
+            : "bg-gray-700 text-purple-400 hover:bg-gray-600 border-gray-600",
           green: isActive
             ? "bg-green-600 text-white shadow-lg ring-2 ring-green-400"
             : "bg-gray-700 text-green-400 hover:bg-gray-600 border-gray-600",

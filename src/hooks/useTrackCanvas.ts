@@ -1,4 +1,4 @@
-import {useEffect, useRef, RefObject} from "react";
+import {useEffect, useRef, useState, RefObject} from "react";
 import type {Point, Obstacle} from "../types/track";
 import {BORDER_COLORS, BORDER_LINE_WIDTH} from "../utils/trackBorderStyles";
 
@@ -96,6 +96,9 @@ export interface CanvasRenderOptions {
   isOuterComplete: boolean;
   isInnerComplete: boolean;
   textureUrl?: string | null;
+  centerline?: Point[];
+  isDrawing?: boolean;
+  trackWidth?: number;
 }
 
 export function useTrackCanvas(
@@ -111,19 +114,38 @@ export function useTrackCanvas(
     isOuterComplete,
     isInnerComplete,
     textureUrl,
+    centerline = [],
+    isDrawing = false,
+    trackWidth = 80,
   } = options;
 
   // Cache loaded texture image to prevent re-loading on every render
   const textureImgRef = useRef<HTMLImageElement | null>(null);
   const currentTextureUrlRef = useRef<string | null>(null);
+  const [textureLoadTrigger, setTextureLoadTrigger] = useState(0);
 
   // Load texture image when textureUrl changes
   useEffect(() => {
     if (textureUrl && textureUrl !== currentTextureUrlRef.current) {
       const img = new Image();
+      // In Vite, public/ files are served from root, so use /tracks/ not /public/tracks/
       img.src = `/public/tracks/${textureUrl}`;
+
+      // Add load handler to trigger re-render when image loads
+      img.onload = () => {
+        console.log(`✅ Texture loaded successfully: ${textureUrl}`);
+        setTextureLoadTrigger((prev) => prev + 1);
+      };
+
+      // Add error handler for debugging
+      img.onerror = (e) => {
+        console.error(`❌ Failed to load texture: ${textureUrl}`, e);
+        console.error(`   Attempted path: /tracks/${textureUrl}`);
+      };
+
       textureImgRef.current = img;
       currentTextureUrlRef.current = textureUrl;
+      console.log(`🎨 Loading texture: ${textureUrl}`);
     } else if (!textureUrl) {
       textureImgRef.current = null;
       currentTextureUrlRef.current = null;
@@ -145,28 +167,89 @@ export function useTrackCanvas(
       // Draw generated texture if loaded (replaces base layer)
       if (textureImgRef.current?.complete) {
         ctx.drawImage(textureImgRef.current, 0, 0, canvas.width, canvas.height);
+        console.log(
+          `🖼️  Rendering texture on canvas: ${currentTextureUrlRef.current}`
+        );
       }
 
       // Draw all elements on top
       drawAllElements();
     };
 
-    // Set up image load listener if texture isn't loaded yet
-    if (textureImgRef.current && !textureImgRef.current.complete) {
-      textureImgRef.current.onload = render;
-    }
-
-    // Initial render
+    // Render
     render();
 
     function drawAllElements() {
+      // Draw centerline preview while dragging
+      if (isDrawing && centerline.length > 0) {
+        // Draw centerline
+        ctx.strokeStyle = "#9ca3af"; // Gray
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(centerline[0].x, centerline[0].y);
+        for (let i = 1; i < centerline.length; i++) {
+          ctx.lineTo(centerline[i].x, centerline[i].y);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Calculate and draw preview borders
+        if (centerline.length >= 2) {
+          const halfWidth = trackWidth / 2;
+          const previewOuter: Point[] = [];
+          const previewInner: Point[] = [];
+
+          for (let i = 0; i < centerline.length; i++) {
+            const current = centerline[i];
+            let tangentX = 0;
+            let tangentY = 0;
+
+            if (i === 0) {
+              tangentX = centerline[1].x - current.x;
+              tangentY = centerline[1].y - current.y;
+            } else if (i === centerline.length - 1) {
+              tangentX = current.x - centerline[i - 1].x;
+              tangentY = current.y - centerline[i - 1].y;
+            } else {
+              tangentX = centerline[i + 1].x - centerline[i - 1].x;
+              tangentY = centerline[i + 1].y - centerline[i - 1].y;
+            }
+
+            const length = Math.sqrt(tangentX * tangentX + tangentY * tangentY);
+            if (length > 0) {
+              tangentX /= length;
+              tangentY /= length;
+            }
+
+            const perpX = -tangentY;
+            const perpY = tangentX;
+
+            previewOuter.push({
+              x: current.x + perpX * halfWidth,
+              y: current.y + perpY * halfWidth,
+            });
+            previewInner.push({
+              x: current.x - perpX * halfWidth,
+              y: current.y - perpY * halfWidth,
+            });
+          }
+
+          // Draw preview borders with transparency
+          ctx.globalAlpha = 0.5;
+          drawPath(ctx, previewOuter, BORDER_COLORS.canvas.outer, false);
+          drawPath(ctx, previewInner, BORDER_COLORS.canvas.inner, false);
+          ctx.globalAlpha = 1.0;
+        }
+      }
+
       // Draw outer border (solid blue)
-      if (outerBorder.length > 0) {
+      if (!isDrawing && outerBorder.length > 0) {
         drawPath(ctx, outerBorder, BORDER_COLORS.canvas.outer, isOuterComplete);
       }
 
       // Draw inner border (solid red)
-      if (innerBorder.length > 0) {
+      if (!isDrawing && innerBorder.length > 0) {
         drawPath(ctx, innerBorder, BORDER_COLORS.canvas.inner, isInnerComplete);
       }
 
@@ -220,6 +303,10 @@ export function useTrackCanvas(
     isOuterComplete,
     isInnerComplete,
     textureUrl,
+    textureLoadTrigger,
+    centerline,
+    isDrawing,
+    trackWidth,
     canvasRef,
   ]);
 }

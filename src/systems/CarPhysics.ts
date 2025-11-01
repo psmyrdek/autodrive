@@ -31,7 +31,7 @@ export class CarPhysics {
   };
 
   private container: Phaser.GameObjects.Container | null = null;
-  private graphics: Phaser.GameObjects.Graphics | null = null;
+  private carSprite: Phaser.GameObjects.Image | null = null;
   private scene: Phaser.Scene;
 
   constructor(scene: Phaser.Scene) {
@@ -39,12 +39,37 @@ export class CarPhysics {
   }
 
   createCar(startX: number, startY: number): Phaser.GameObjects.Container {
-    this.graphics = this.scene.add.graphics();
+    // Verify the car texture exists
+    if (!this.scene.textures.exists('car')) {
+      console.error('Car texture not loaded! Texture key "car" not found.');
+      // Create a fallback rectangle if texture is missing
+      const fallbackGraphics = this.scene.add.graphics();
+      fallbackGraphics.fillStyle(0x00ff00, 1);
+      fallbackGraphics.fillRect(-this.carBody.width / 2, -this.carBody.height / 2, this.carBody.width, this.carBody.height);
+
+      this.container = this.scene.add.container(0, 0);
+      this.container.add(fallbackGraphics);
+      this.container.setDepth(100); // Ensure car is above everything else
+      this.resetPosition(startX, startY);
+      return this.container;
+    }
+
+    // Create sprite from the car.png asset (240x120)
+    this.carSprite = this.scene.add.image(0, 0, 'car');
+
+    // Scale down to match current car dimensions (40x20)
+    // 240x120 → 40x20 requires scale of ~0.167
+    const scaleX = this.carBody.width / 240;
+    const scaleY = this.carBody.height / 120;
+    this.carSprite.setScale(scaleX, scaleY);
+
     this.container = this.scene.add.container(0, 0);
-    this.container.add(this.graphics);
+    this.container.add(this.carSprite);
+
+    // Set depth to ensure car renders above track and textures
+    this.container.setDepth(100);
 
     this.resetPosition(startX, startY);
-    this.drawCar();
 
     return this.container;
   }
@@ -60,37 +85,6 @@ export class CarPhysics {
       this.container.setPosition(this.carBody.x, this.carBody.y);
       this.container.setRotation(this.carBody.rotation);
     }
-  }
-
-  private drawCar() {
-    if (!this.graphics) return;
-
-    this.graphics.clear();
-
-    const hw = this.carBody.width / 2;
-    const hh = this.carBody.height / 2;
-
-    // Main car body (gray fill)
-    this.graphics.fillStyle(0x808080, 1);
-    this.graphics.fillRect(-hw, -hh, this.carBody.width, this.carBody.height);
-
-    // Blue border at front (right side when rotation = 0)
-    this.graphics.lineStyle(3, 0x0000ff, 1);
-    this.graphics.beginPath();
-    this.graphics.moveTo(hw, -hh);
-    this.graphics.lineTo(hw, hh);
-    this.graphics.strokePath();
-
-    // Red border at back (left side when rotation = 0)
-    this.graphics.lineStyle(3, 0xff0000, 1);
-    this.graphics.beginPath();
-    this.graphics.moveTo(-hw, -hh);
-    this.graphics.lineTo(-hw, hh);
-    this.graphics.strokePath();
-
-    // Black border on top and bottom
-    this.graphics.lineStyle(2, 0x000000, 1);
-    this.graphics.strokeRect(-hw, -hh, this.carBody.width, this.carBody.height);
   }
 
   accelerate(deltaSeconds: number) {

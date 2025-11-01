@@ -34,20 +34,20 @@ export function InstructionsPanel() {
         <div className="space-y-3">
           <div>
             <h4 className="text-xs font-semibold text-gray-700 mb-1">
-              Drawing Borders
+              Drawing Track
             </h4>
             <ul className="text-xs text-gray-600 space-y-1">
               <li className="flex items-start">
-                <span className="mr-2 text-blue-500">•</span>
-                <span>Single-click to add points</span>
+                <span className="mr-2 text-purple-500">•</span>
+                <span>Click once to start drawing</span>
               </li>
               <li className="flex items-start">
-                <span className="mr-2 text-blue-500">•</span>
-                <span>Double-click to complete the outline</span>
+                <span className="mr-2 text-purple-500">•</span>
+                <span>Move your mouse freely to draw the path</span>
               </li>
               <li className="flex items-start">
-                <span className="mr-2 text-blue-500">•</span>
-                <span>Draw outer border first, then inner</span>
+                <span className="mr-2 text-purple-500">•</span>
+                <span>Click again to finish - both borders created automatically</span>
               </li>
             </ul>
           </div>

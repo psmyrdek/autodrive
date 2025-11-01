@@ -1,4 +1,5 @@
 import {createCanvas, loadImage} from "canvas";
+import sharp from "sharp";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import {fileURLToPath} from "node:url";
@@ -129,7 +130,12 @@ export async function renderBordersBaseImage(
     ctx.drawImage(baseImage, 0, 0, width, height);
 
     // Draw gray fill at 80% opacity between borders (track area)
-    if (outerBorder && outerBorder.length > 2 && innerBorder && innerBorder.length > 2) {
+    if (
+      outerBorder &&
+      outerBorder.length > 2 &&
+      innerBorder &&
+      innerBorder.length > 2
+    ) {
       ctx.globalAlpha = 0.8;
       ctx.fillStyle = "#808080"; // Gray color
       ctx.beginPath();
@@ -164,19 +170,23 @@ export async function renderBordersBaseImage(
 
 /**
  * Renders border lines guide for ControlNet
- * Creates solid white fill on black background for track area
+ * Creates white border lines on black background (edge detection style)
  * This guides the AI to generate texture while respecting track boundaries
  * @param {Array<{x: number, y: number}>} outerBorder - Outer border points
  * @param {Array<{x: number, y: number}>} innerBorder - Inner border points
  * @param {number} width - Canvas width (default: 1280)
  * @param {number} height - Canvas height (default: 640)
- * @returns {Buffer} - PNG buffer of the border lines guide
+ * @param {number} blur - Blur amount in pixels (default: 0, no blur)
+ * @param {string} outputPath - Optional path to save the blurred guide image
+ * @returns {Promise<Buffer>} - PNG buffer of the border lines guide
  */
-export function renderBordersGuide(
+export async function renderBordersGuide(
   outerBorder,
   innerBorder,
   width = 1280,
-  height = 640
+  height = 640,
+  blur = 0,
+  outputPath = null
 ) {
   try {
     const canvas = createCanvas(width, height);
@@ -186,9 +196,14 @@ export function renderBordersGuide(
     ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, width, height);
 
-    // Fill track area (between borders) with solid white using even-odd fill rule
-    if (outerBorder && outerBorder.length > 2 && innerBorder && innerBorder.length > 2) {
-      ctx.fillStyle = "#ffffff"; // White for track area
+    // Draw white filled shape (track area between borders)
+    if (
+      outerBorder &&
+      outerBorder.length > 2 &&
+      innerBorder &&
+      innerBorder.length > 2
+    ) {
+      ctx.fillStyle = "#ffffff"; // White fill
       ctx.beginPath();
 
       // Draw outer border path (clockwise)
@@ -197,50 +212,6 @@ export function renderBordersGuide(
       ctx.closePath();
 
       // Draw inner border path (counter-clockwise by reversing)
-      const reversedInner = [...innerBorder].reverse();
-      ctx.moveTo(reversedInner[0].x, reversedInner[0].y);
-      drawSmoothCurve(ctx, reversedInner, true);
-      ctx.closePath();
-
-      // Fill using even-odd rule (creates solid white "donut" shape)
-      ctx.fill("evenodd");
-    }
-
-    // Return as PNG buffer
-    const buffer = canvas.toBuffer("image/png");
-    return buffer;
-  } catch (error) {
-    console.error("Error rendering borders guide image:", error);
-    console.error("Error stack:", error.stack);
-    throw error;
-  }
-}
-
-export function renderMask(
-  outerBorder,
-  innerBorder,
-  width = 1280,
-  height = 640
-) {
-  try {
-    const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext("2d");
-
-    // Black background
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, width, height);
-
-    // Fill track area (between borders) with white using even-odd fill rule
-    if (outerBorder.length > 2 && innerBorder.length > 2) {
-      ctx.fillStyle = "#ffffff"; // White for track area
-      ctx.beginPath();
-
-      // Draw outer border path (clockwise) - exact points
-      ctx.moveTo(outerBorder[0].x, outerBorder[0].y);
-      drawSmoothCurve(ctx, outerBorder, true);
-      ctx.closePath();
-
-      // Draw inner border path (counter-clockwise by reversing) - exact points
       const reversedInner = [...innerBorder].reverse();
       ctx.moveTo(reversedInner[0].x, reversedInner[0].y);
       drawSmoothCurve(ctx, reversedInner, true);
@@ -248,84 +219,25 @@ export function renderMask(
 
       // Fill using even-odd rule (creates "donut" shape)
       ctx.fill("evenodd");
-    } else {
-      console.warn("Not enough points to draw track:", {
-        outer: outerBorder.length,
-        inner: innerBorder.length,
-      });
     }
 
-    // Return as PNG buffer
-    const buffer = canvas.toBuffer("image/png");
-    return buffer;
-  } catch (error) {
-    console.error("Error rendering mask:", error);
-    console.error("Error stack:", error.stack);
-    throw error;
-  }
-}
+    // Get canvas buffer (pre-blur)
+    let buffer = canvas.toBuffer("image/png");
 
+    // Apply blur if specified
+    if (blur > 0) {
+      buffer = await sharp(buffer).blur(blur).png().toBuffer();
 
-/**
- * Render a mask for OpenAI GPT Image API
- * The mask has transparent (alpha=0) track area where editing should occur,
- * and opaque everywhere else to preserve borders and outside areas
- * @param {Array<{x: number, y: number}>} outerBorder - Outer border points
- * @param {Array<{x: number, y: number}>} innerBorder - Inner border points
- * @param {number} width - Canvas width (default: 1280)
- * @param {number} height - Canvas height (default: 720)
- * @returns {Buffer} - PNG buffer of the mask
- */
-export function renderMaskForOpenAI(
-  outerBorder,
-  innerBorder,
-  width = 1280,
-  height = 720
-) {
-  try {
-    const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext("2d");
-
-    // Opaque black background (areas to preserve)
-    ctx.fillStyle = "rgba(0, 0, 0, 1)";
-    ctx.fillRect(0, 0, width, height);
-
-    // Fill track area (between borders) with transparent using even-odd fill rule
-    if (outerBorder.length > 2 && innerBorder.length > 2) {
-      // Use destination-out to cut out the track area (make it transparent)
-      ctx.globalCompositeOperation = "destination-out";
-      ctx.fillStyle = "#ffffff"; // Color doesn't matter with destination-out, only alpha
-
-      ctx.beginPath();
-
-      // Draw outer border path (clockwise)
-      ctx.moveTo(outerBorder[0].x, outerBorder[0].y);
-      drawSmoothCurve(ctx, outerBorder, true);
-      ctx.closePath();
-
-      // Draw inner border path (counter-clockwise by reversing)
-      const reversedInner = [...innerBorder].reverse();
-      ctx.moveTo(reversedInner[0].x, reversedInner[0].y);
-      drawSmoothCurve(ctx, reversedInner, true);
-      ctx.closePath();
-
-      // Fill using even-odd rule (creates "donut" shape that's transparent)
-      ctx.fill("evenodd");
-
-      // Reset composite operation
-      ctx.globalCompositeOperation = "source-over";
-    } else {
-      console.warn("Not enough points to draw track:", {
-        outer: outerBorder.length,
-        inner: innerBorder.length,
-      });
+      // Save post-blur buffer if output path provided
+      if (outputPath) {
+        fs.writeFileSync(outputPath, buffer);
+        console.log(`   Post-blur guide saved: ${outputPath}`);
+      }
     }
 
-    // Return as PNG buffer
-    const buffer = canvas.toBuffer("image/png");
     return buffer;
   } catch (error) {
-    console.error("Error rendering OpenAI mask:", error);
+    console.error("Error rendering borders guide image:", error);
     console.error("Error stack:", error.stack);
     throw error;
   }

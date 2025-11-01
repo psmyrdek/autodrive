@@ -23,20 +23,24 @@ const __dirname = path.dirname(__filename);
  * CRITICAL BALANCE: ControlNet weight + endStep vs CFG Scale
  * - Too high weight/endStep = edges perfect but prompt ignored (random images)
  * - Too low weight/endStep = prompt followed but edges lousy
- * - Sweet spot: weight=0.68, endStep=72%, CFG=9.8
+ * - Current params: weight=0.74, threshold=0.86, endStep=78%, CFG=8.6
+ * - Aggressive ControlNet for precise border alignment, lower CFG to reduce prompt conflict
  */
 const GENERATION_CONFIG = {
   name: "Track Texture",
   controlNet: {
-    weight: 0.68, // Proven sweet spot - good structure without suppressing prompt
-    threshold: 0.79, // Edge sensitivity
+    weight: 0.74, // Significantly increased for strong border adherence
+    threshold: 0.86, // High edge sensitivity for precise border alignment
     startStepPercentage: 0,
-    endStepPercentage: 72, // Control through 72% of generation
+    endStepPercentage: 78, // Extended control through most of generation
     controlMode: "prompt", // Prioritize prompt over pure structure
   },
   generation: {
     steps: 43, // Optimal refinement steps
-    CFGScale: 9.8, // Strong prompt adherence
+    CFGScale: 8.6, // Lower CFG to allow ControlNet structural dominance
+  },
+  guide: {
+    blur: 3, // Blur amount in pixels for ControlNet guide image (0 = no blur)
   },
 };
 
@@ -169,7 +173,8 @@ function buildRunwareRequest(guideDataUri) {
  * black background (edge detection style) instead of external ControlNet preprocessing.
  * This enables edge-to-edge texture generation while maintaining track boundaries.
  *
- * Uses proven configuration: weight=0.68, endStep=72%, CFG=9.8 (most consistent results)
+ * Aggressive settings for precise borders: weight=0.74, threshold=0.86, endStep=78%, CFG=8.6
+ * Optional blur applied to guide image for softer edge guidance.
  *
  * @param {Array<{x: number, y: number}>} outerBorder - Outer border points
  * @param {Array<{x: number, y: number}>} innerBorder - Inner border points
@@ -187,6 +192,7 @@ export async function generateTrackTexture(
 
   // Initialize Runware client
   const runware = new Runware({apiKey});
+  await runware.connect();
 
   try {
     // Ensure output directories exist
@@ -199,11 +205,26 @@ export async function generateTrackTexture(
     // White border lines on black background (edge detection style)
     console.log(`\n🎨 Generating texture for "${trackName}"...`);
     console.log("📐 Creating ControlNet guide from track borders...");
-    const bordersGuideBuffer = renderBordersGuide(outerBorder, innerBorder);
+
+    // Prepare guide image output path
+    const guideFilename = `${sanitizedName}_guide.png`;
+    const guideOutputPath = path.join(PATHS.publicTracks, guideFilename);
+
+    // Generate and save guide image with optional blur
+    const bordersGuideBuffer = await renderBordersGuide(
+      outerBorder,
+      innerBorder,
+      1280,
+      640,
+      GENERATION_CONFIG.guide.blur,
+      guideOutputPath
+    );
     const guideDataUri = createBase64DataUri(bordersGuideBuffer);
+    console.log(`   Guide saved: ${guideFilename}`);
 
     // Step 2: Generate texture
     console.log(`\n🔄 Generating with ${GENERATION_CONFIG.name}...`);
+    console.log(`   Guide: blur=${GENERATION_CONFIG.guide.blur}px`);
     console.log(
       `   ControlNet: weight=${GENERATION_CONFIG.controlNet.weight}, threshold=${GENERATION_CONFIG.controlNet.threshold}, endStep=${GENERATION_CONFIG.controlNet.endStepPercentage}%`
     );

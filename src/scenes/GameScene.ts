@@ -31,6 +31,24 @@ export default class GameScene extends Phaser.Scene {
     super({key: "GameScene"});
   }
 
+  preload() {
+    // Only load car sprite if it doesn't already exist in texture cache
+    // This prevents "Texture key already in use" errors on scene restart
+    if (!this.textures.exists("car")) {
+      this.load.image("car", "/car.png");
+
+      // Add error handler for asset loading failures
+      this.load.on("loaderror", (file: Phaser.Loader.File) => {
+        console.error(`Failed to load asset: ${file.key} from ${file.url}`);
+      });
+
+      // Verify asset loaded successfully
+      this.load.on("filecomplete-image-car", () => {
+        console.log("Car sprite loaded successfully");
+      });
+    }
+  }
+
   setTrack(track: Track) {
     this.track = track;
   }
@@ -129,10 +147,15 @@ export default class GameScene extends Phaser.Scene {
 
   private loadAndDisplayTexture(textureFilename: string) {
     const textureKey = `track-texture-${textureFilename}`;
-    const textureUrl = `/tracks/${textureFilename}`;
+    const textureUrl = `/public/tracks/${textureFilename}`;
+
+    console.log(`🎨 Loading track texture: ${textureFilename}`);
+    console.log(`   Texture key: ${textureKey}`);
+    console.log(`   Texture URL: ${textureUrl}`);
 
     // Check if texture is already loaded
     if (this.textures.exists(textureKey)) {
+      console.log(`✅ Texture already cached: ${textureKey}`);
       this.displayTexture(textureKey);
       return;
     }
@@ -142,12 +165,14 @@ export default class GameScene extends Phaser.Scene {
 
     // Listen for load completion
     this.load.once("complete", () => {
+      console.log(`✅ Texture loaded successfully: ${textureKey}`);
       this.displayTexture(textureKey);
     });
 
     // Handle load errors
-    this.load.once("loaderror", (file: any) => {
-      console.error("Failed to load texture:", file.key);
+    this.load.once("loaderror", (file: {key: string}) => {
+      console.error(`❌ Failed to load texture: ${file.key}`);
+      console.error(`   Attempted URL: ${textureUrl}`);
       // Borders are already drawn by renderTrack()
     });
 
@@ -155,12 +180,16 @@ export default class GameScene extends Phaser.Scene {
   }
 
   private displayTexture(textureKey: string) {
+    console.log(`🖼️  Displaying texture on game scene: ${textureKey}`);
+
     this.trackTextureImage = this.add.image(640, 320, textureKey);
 
     // Send to back (below car and other game objects)
     this.trackTextureImage.setDepth(-1);
 
     this.trackTextureImage.setDisplaySize(1280, 640);
+
+    console.log(`   Position: (640, 320), Size: 1280x640, Depth: -1`);
   }
 
   private drawPath(points: {x: number; y: number}[]) {
@@ -269,12 +298,28 @@ export default class GameScene extends Phaser.Scene {
       );
 
       if (collision) {
-        this.handleCollision();
+        console.log(
+          "🎮 GameScene: Collision detected, calling handleCollision()"
+        );
+        try {
+          this.handleCollision();
+        } catch (error) {
+          console.error("❌ Error in handleCollision():", error);
+        }
       }
     }
   }
 
   private handleCollision() {
+    console.log(
+      "💥 GameScene.handleCollision(): Stopping game and emitting collision event"
+    );
+    console.log(`  isRunning: ${this.isRunning} -> false`);
+    console.log(`  Elapsed Time: ${this.timerDisplay.getElapsedTime()}ms`);
+    console.log(
+      `  Telemetry Entries: ${this.telemetryTracker.getTelemetryData().length}`
+    );
+
     // Stop the game
     this.isRunning = false;
 
@@ -282,10 +327,12 @@ export default class GameScene extends Phaser.Scene {
     this.carPhysics.stop();
 
     // Emit collision event with telemetry data for React component to handle
+    console.log('📡 GameScene: Emitting "collision" event to React component');
     this.game.events.emit("collision", {
       elapsedTime: this.timerDisplay.getElapsedTime(),
       telemetryData: this.telemetryTracker.getTelemetryData(),
     });
+    console.log("✅ GameScene: Collision event emitted successfully");
   }
 
   /**
